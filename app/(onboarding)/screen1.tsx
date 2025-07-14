@@ -1,10 +1,29 @@
 import { OnboardingData } from "@/static/onboarding";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { MotiImage, MotiView } from "moti";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 export default function OnboardingScreen() {
+
+  const router = useRouter();
+
+  const getPositionStyle = (position: string) => {
+  switch (position) {
+    case "top-left":
+      return "absolute -top-10 -left-10";
+    case "top-right":
+      return "absolute -top-10 -right-10";
+    case "bottom-left":
+      return "absolute -bottom-20 -left-10";
+    case "bottom-right":
+      return "absolute -bottom-20 -right-10";
+    default:
+      return "";
+  }
+};
+
   return (
     <LinearGradient
       colors={["#ffffff", "#FFE4F5"]} // white to lime-200 (hex)
@@ -27,7 +46,7 @@ export default function OnboardingScreen() {
             }}
             key={index}
             source={item.image}
-            className={`${item.styles} w-28 h-28`}
+            className={`${getPositionStyle(item.position)} w-28 h-28`}
             resizeMode="contain"
           />
         ))}
@@ -73,7 +92,7 @@ export default function OnboardingScreen() {
       >
         <TouchableOpacity
           className=""
-          onPress={() => console.log("Next Button Pressed")}
+          onPress={()=>router.push("/(auth)/loginScreen")}
         >
           <Text className="text-white text-center text-2xl font-semibold">
             Get Started

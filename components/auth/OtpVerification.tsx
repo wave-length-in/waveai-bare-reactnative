@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface OTPVerificationProps {
   mobile: string;
@@ -12,8 +13,12 @@ interface OTPVerificationProps {
 }
 
 const OTPVerification: React.FC<OTPVerificationProps> = ({ mobile, otp, setOtp, inputRefs, onChangeMobile }) => {
+
+  const router = useRouter();
   const [timer, setTimer] = useState(30);
   const [showResend, setShowResend] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let interval: number | null = null;
@@ -48,6 +53,16 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ mobile, otp, setOtp, 
     // Add your resend OTP API call here
   };
 
+  const handleContinue = () => {
+    setLoading(true);
+    // Add your OTP verification API call here
+    setTimeout(() => {
+      setLoading(false);
+      router.push("/(auth)/basicDetails");
+      // Navigate to the next screen or show success message
+    }, 2000); // Simulating network delay
+  }
+
   return (
     <View className="space-y-6">
       <Text className="text-4xl text-black font-sans my-4">Verify OTP</Text>
@@ -78,8 +93,14 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ mobile, otp, setOtp, 
           end={{ x: 1, y: 0 }}
           className="flex-row w-full justify-center items-center py-4 px-4 rounded-full"
         >
-          <Text className="text-white font-semibold text-lg mr-2">Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
+          {loading ? (
+            <ActivityIndicator size={25} color="#fff" />
+          ) : (
+            <TouchableOpacity onPress={handleContinue} className="flex-row items-center">
+              <Text className="text-white font-semibold text-lg mr-2">Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
         </LinearGradient>
       </TouchableOpacity>
 

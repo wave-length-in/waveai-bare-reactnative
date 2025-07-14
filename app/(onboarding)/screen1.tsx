@@ -88,7 +88,7 @@ export default function OnboardingScreen() {
         colors={["#d08eff", "#ff9ae4"]} // purple to
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        className="absolute w-[90%] bottom-10 bg-[#d08eff] px-6 py-4 rounded-full overflow-hidden"
+        className="absolute w-[100%] bottom-10 bg-[#d08eff] px-6 py-4 rounded-full overflow-hidden"
       >
         <TouchableOpacity
           className=""

@@ -2,19 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface EnterMobileNumberProps {
   mobile: string;
   setMobile: (value: string) => void;
   onGetOtp: () => void;
-}
+};
 
 const EnterMobileNumber: React.FC<EnterMobileNumberProps> = ({
   mobile,
@@ -28,14 +28,14 @@ const EnterMobileNumber: React.FC<EnterMobileNumberProps> = ({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       className="flex-1 bg-white px-4"
     >
-      <View className="space-y-[2rem] w-full">
+      <View className="space-y-[2rem] w-[90%]">
         <Text className="text-4xl text-black font-sans my-4">Login</Text>
         <Text className="text-gray-500 mb-2 text-base">
           Enter your phone number to login
         </Text>
 
         {/* Phone number input */}
-        <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white w-11/12">
+        <View className="flex-row items-center border border-gray-300 rounded-full px-4 bg-white w-full">
           <Text className="text-lg text-black mr-2">+91</Text>
           <TextInput
             placeholder="9876543210"

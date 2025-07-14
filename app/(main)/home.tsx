@@ -1,10 +1,11 @@
-import React from 'react'
-import { Text, View } from 'react-native'
+import { HeaderName } from '@/components/home/HomeHeader';
+import React from 'react';
+import { View } from 'react-native';
 
 export default function HomePage() {
   return (
-    <View className='flex-1 items-center justify-center'>
-      <Text>Home</Text>
+    <View className='flex-1 bg-white w-full h-full'>
+      <HeaderName />
     </View>
   )
 }

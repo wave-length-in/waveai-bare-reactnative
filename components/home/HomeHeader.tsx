@@ -4,9 +4,9 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 export const HeaderName: React.FC = () => {
     return (
-        <View className="flex-1">
+        <View className="">
             <LinearGradient
-                colors={['#0096FF50','#FF69B410']}
+                colors={['#0096FF50', '#FF69B410']}
                 className=""
                 style={{ borderBottomLeftRadius: 25, borderBottomRightRadius: 25 }}
             >
@@ -27,10 +27,8 @@ export const HeaderName: React.FC = () => {
                 </View>
             </LinearGradient>
 
-            <View className='w-[90%] my-4 mx-auto'>
+            <View className='w-[90%] mt-4 mx-auto'>
                 <Text className='text-3xl font-semibold'>Hey, <Text className='text-purple-500'>Aastha</Text></Text>
-                <Text className='text-lg text-[#323232] my-2'>Start Chatting..</Text>
-
             </View>
         </View>
     )

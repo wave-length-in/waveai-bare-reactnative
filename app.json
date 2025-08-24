@@ -1,42 +1,66 @@
 {
   "expo": {
-    "name": "wave-app",
+    "name": " ",
     "slug": "wave-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/wave-new-logo2.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UILaunchScreen": {
+          "UIImageName": "SplashScreen",
+          "UILaunchScreenMinimumSize": "{320, 568}"
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/zenny.jpg",
+        "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "splash": {
+        "image": "./assets/images/wave-new-logo2.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#000000",
+        "mdpi": "./assets/images/zenny.jpg",
+        "hdpi": "./assets/images/zenny.jpg",
+        "xhdpi": "./assets/images/zenny.jpg",
+        "xxhdpi": "./assets/images/zenny.jpg",
+        "xxxhdpi": "./assets/images/zenny.jpg"
+      }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/wave-new-logo2.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/wave-new-logo2.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#000000",
+          "dark": {
+            "image": "./assets/images/wave-new-logo2.png",
+            "backgroundColor": "#000000"
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "splash": {
+      "image": "./assets/images/wave-new-logo2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
     }
   }
 }

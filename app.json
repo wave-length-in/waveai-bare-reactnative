@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": " ",
+    "name": "Zenny Wave",
     "slug": "wave-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/wave-new-logo2.png",
+    "icon": "./assets/images/wave-new-logo.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/zenny.jpg",
+        "foregroundImage": "./assets/images/zenny.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
@@ -27,12 +27,13 @@
         "image": "./assets/images/wave-new-logo2.png",
         "resizeMode": "contain",
         "backgroundColor": "#000000",
-        "mdpi": "./assets/images/zenny.jpg",
-        "hdpi": "./assets/images/zenny.jpg",
-        "xhdpi": "./assets/images/zenny.jpg",
-        "xxhdpi": "./assets/images/zenny.jpg",
-        "xxxhdpi": "./assets/images/zenny.jpg"
-      }
+        "mdpi": "./assets/images/zenny.png",
+        "hdpi": "./assets/images/zenny.png",
+        "xhdpi": "./assets/images/zenny.png",
+        "xxhdpi": "./assets/images/zenny.png",
+        "xxxhdpi": "./assets/images/zenny.png"
+      },
+      "package": "com.gauravwavedev.waveapp"
     },
     "web": {
       "bundler": "metro",
@@ -52,7 +53,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
@@ -61,6 +63,11 @@
       "image": "./assets/images/wave-new-logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2e186c1e-13e7-41f9-aa5c-d90840c55f1a"
+      }
     }
   }
 }

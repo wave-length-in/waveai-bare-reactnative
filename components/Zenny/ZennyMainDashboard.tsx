@@ -15,22 +15,7 @@ import ChatHeader from './ChatHeader';
 import ChatInput from './ChatInput';
 import { ChatSection } from './ChatSection';
 
-// Types
-interface Message {
-    id: number;
-    type: 'user' | 'ai';
-    content: string;
-    timestamp?: string | Date;
-    isTyping?: boolean;
-    delivered?: boolean;
-    deliveryStatus?: 'pending' | 'sent' | 'delivered';
-    image_url?: string;
-    imageFile?: ImagePicker.ImagePickerAsset;
-    isImageUploading?: boolean;
-    isFromServer?: boolean;
-}
-
-// Constants - Replace with your actual URLs
+// Constants
 const SOCKET_SERVER_URL = SOCKET_URL;
 
 const generateISTTimestamp = () => {
@@ -52,21 +37,37 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const [socket, setSocket] = useState<Socket | null>(null);
     const [inputValue, setInputValue] = useState("");
-    const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-    const typingTimer = useRef<NodeJS.Timeout | null>(null);
     const pendingMessagesRef = useRef<string[]>([]);
     const pendingImageRef = useRef<string | null>(null);
     const isUserActivelyTypingRef = useRef(false);
-    const deliveryTimeoutsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
-    const messagesBackupRef = useRef<Message[]>([]);
+    const deliveryTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
     // Memoize character config to prevent recreation
     const characterConfig = useMemo(() => ({
         characterId,
         characterName
     }), [characterId, characterName]);
+
+    // Get userId on component mount
+    useEffect(() => {
+        const getUserId = async () => {
+            try {
+                const authData = await getStoredAuthData();
+                if (authData?.userId) {
+                    setUserId(authData.userId);
+                } else {
+                    console.error('User ID not found in storage');
+                }
+            } catch (error) {
+                console.error('Error getting user ID:', error);
+            }
+        };
+        getUserId();
+    }, []);
 
     // Cleanup delivery timeouts on unmount
     useEffect(() => {
@@ -98,32 +99,26 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         deliveryTimeoutsRef.current.set(messageId, timeout);
     }, []);
 
-    // Debounced AI trigger function
+    // Debounced AI trigger function - Updated to handle both text and images
     const triggerAiReplyWithDebounce = useCallback(() => {
+        // Clear any existing timer
         if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
         }
 
-        debounceTimer.current = setTimeout(async () => {
-            if (socket && !isUserActivelyTypingRef.current &&
+        debounceTimer.current = setTimeout(() => {
+            // Only trigger if user is not actively typing and we have pending content (messages or image)
+            if (socket && userId && !isUserActivelyTypingRef.current &&
                 (pendingMessagesRef.current.length > 0 || pendingImageRef.current)) {
 
                 const combinedMessage = pendingMessagesRef.current.join(" ");
                 const imageUrl = pendingImageRef.current;
 
-                // Get user ID from storage
-                const authData = await getStoredAuthData();
-                const userId = authData?.userId;
-
-                if (!userId) {
-                    console.error('User ID not found in storage');
-                    return;
-                }
-
-                // Mark messages as delivered
+                // Mark messages as delivered (blue tick) when AI is triggered
                 setMessages((prev) => {
                     return prev.map((msg) => {
                         if (msg.type === "user" && (msg.deliveryStatus === 'sent' || msg.delivered === false)) {
+                            // Clear any pending timeouts for this message
                             const existingTimeout = deliveryTimeoutsRef.current.get(msg.id);
                             if (existingTimeout) {
                                 clearTimeout(existingTimeout);
@@ -131,7 +126,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                             }
                             return {
                                 ...msg,
-                                deliveryStatus: 'delivered' as const,
+                                deliveryStatus: 'delivered' as const, // Blue tick
                                 delivered: true
                             };
                         }
@@ -139,12 +134,13 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     });
                 });
 
+                // Set loading to true when actually triggering AI
                 setLoading(true);
 
                 // Send summarize_message for both text and image content
                 if (combinedMessage.trim() || imageUrl) {
                     socket.emit("summarize_message", {
-                        userId,
+                        userId: userId,
                         characterId: characterConfig.characterId,
                         message: combinedMessage.trim() || "",
                         image_url: imageUrl || undefined
@@ -153,228 +149,117 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
                 // Trigger AI with combined message and/or image
                 const aiPayload: any = {
-                    userId,
+                    userId: userId,
                     characterId: characterConfig.characterId,
                     characterName: characterConfig.characterName,
                 };
 
+                // Add message if we have text content
                 if (combinedMessage.trim()) {
                     aiPayload.message = combinedMessage;
                 }
 
+                // Add image_url if we have pending image
                 if (imageUrl) {
                     aiPayload.image_url = imageUrl;
                 }
 
                 socket.emit("trigger_ai_reply", aiPayload);
 
-                // Clear pending content
+                // Clear the pending content after sending
                 pendingMessagesRef.current = [];
                 pendingImageRef.current = null;
             }
-        }, 2000);
-    }, [socket, characterConfig]);
+        }, 2000); // 2-second delay
+    }, [socket, userId, characterConfig]);
 
     // Setup Socket connection
     useEffect(() => {
-        const setupSocket = async () => {
-            try {
-                const authData = await getStoredAuthData();
-                const userId = authData?.userId;
+        if (!userId) return; // Wait for userId to be available
 
-                if (!userId) {
-                    console.error('User ID not found, cannot setup socket');
-                    return;
-                }
+        const newSocket = io(SOCKET_SERVER_URL, {
+            transports: ['websocket'],
+            reconnection: true,
+            secure: false,
+        });
 
-                const newSocket = io(SOCKET_SERVER_URL, {
-                    transports: ['websocket'],
-                    reconnection: true,
-                    secure: false,
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('✅ Connected to SocketIO');
+            newSocket.emit('fetch_chat_history', {
+                userId: userId,
+                characterId: characterConfig.characterId,
+            });
+        });
+
+        newSocket.on('receive_chat_history', (data) => {
+            const fetchedMessages: Message[] = data.messages.map((msg: any, index: number) => ({
+                id: index + 1,
+                type: msg.sender as 'user' | 'ai',
+                content: msg.message,
+                isTyping: false,
+                timestamp: msg.timestamp,
+                image_url: msg.image_url,
+                delivered: msg.sender === "user" ? true : undefined,
+                deliveryStatus: msg.sender === "user" ? ('delivered' as const) : undefined
+            }));
+            setMessages(fetchedMessages);
+        });
+
+        newSocket.on('chat_history_error', (data) => {
+            console.error('Error fetching chat history:', data.error);
+        });
+
+        newSocket.on('receive_message', (data) => {
+            setMessages((prev) => {
+                const updatedMessages = prev.map((msg) => {
+                    if (msg.type === "user" && (msg.deliveryStatus !== 'delivered' || !msg.delivered)) {
+                        // Clear any pending timeouts
+                        const existingTimeout = deliveryTimeoutsRef.current.get(msg.id);
+                        if (existingTimeout) {
+                            clearTimeout(existingTimeout);
+                            deliveryTimeoutsRef.current.delete(msg.id);
+                        }
+                        return {
+                            ...msg,
+                            delivered: true,
+                            deliveryStatus: 'delivered' as const
+                        };
+                    }
+                    return msg;
                 });
 
-                setSocket(newSocket);
+                return [
+                    ...updatedMessages,
+                    {
+                        id: Date.now() + Math.random(), // Ensure unique ID
+                        type: 'ai',
+                        content: data.message,
+                        isTyping: true,
+                        timestamp: data.timestamp,
+                        isFromServer: true
+                    },
+                ];
+            });
 
-                newSocket.on('connect', () => {
-                    console.log('✅ Connected to SocketIO');
-                    console.log('🔍 Fetching chat history for:', {
-                        userId,
-                        characterId: characterConfig.characterId
-                    });
+            setLoading(false);
+        });
 
-                    newSocket.emit('fetch_chat_history', {
-                        userId,
-                        characterId: characterConfig.characterId,
-                    });
-                });
-
-                newSocket.on('receive_chat_history', (data) => {
-  console.log('📩 Raw chat history data:', JSON.stringify(data, null, 2));
-  
-  try {
-    let messagesArray = [];
-    
-    if (typeof data === 'string') {
-      // Parse log-formatted string into an array of message objects
-      const lines = data.split('\n').filter(l => l.trim());
-      const messages = [];
-      let currentMessage = { id: '', sender: '', content: '' };
-
-      for (let line of lines) {
-        const match = line.match(/^LOG\s+(\d+)\.\s+\[([^\]]+)\]\s+(.*)$/);
-        if (match) {
-          if (currentMessage.id) {
-            messages.push({ ...currentMessage });
-          }
-          currentMessage = {
-            id: match[1],
-            sender: match[2],
-            content: match[3]
-          };
-        } else if (currentMessage.id) {
-          // Append multi-line content
-          currentMessage.content += '\n' + line;
-        }
-      }
-      if (currentMessage.id) {
-        messages.push({ ...currentMessage });
-      }
-      messagesArray = messages;
-    } else {
-      // Handle non-string data (arrays or objects)
-      if (data && Array.isArray(data)) {
-        messagesArray = data;
-      } else if (data && data.messages && Array.isArray(data.messages)) {
-        messagesArray = data.messages;
-      } else if (data && data.data && Array.isArray(data.data)) {
-        messagesArray = data.data;
-      } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-        messagesArray = [data];
-      }
-    }
-    
-    console.log('📋 Messages array to process:', messagesArray);
-    
-    if (messagesArray.length === 0) {
-      console.log('📭 No messages found in chat history');
-      setMessages([]);
-      return;
-    }
-    
-    // Directly map the parsed array to Message format
-    const fetchedMessages: Message[] = messagesArray.map((msg: any, index: number) => {
-      console.log(`🔍 Processing message ${index}:`, msg);
-      
-      let messageType: 'user' | 'ai' = 'ai';
-      if (msg.sender === 'user' || msg.type === 'user' || msg.from === 'user' || (typeof msg.sender === 'string' && msg.sender.toLowerCase() === 'user')) {
-        messageType = 'user';
-      } else if (msg.sender === 'ai' || msg.type === 'ai' || msg.from === 'ai' || msg.sender === 'bot' || (typeof msg.sender === 'string' && msg.sender.toLowerCase() === 'ai')) {
-        messageType = 'ai';
-      }
-      
-      const messageContent = msg.message || msg.content || msg.text || msg.body || msg.content || '';
-      const messageTimestamp = msg.timestamp || msg.created_at || msg.createdAt || msg.date || new Date().toISOString();
-      
-      return {
-        id: msg.id || msg._id || msg.id || (Date.now() + index + Math.random()),
-        type: messageType,
-        content: messageContent.trim(),
-        isTyping: false,
-        timestamp: messageTimestamp,
-        image_url: msg.image_url || msg.imageUrl || msg.image,
-        delivered: messageType === 'user' ? true : undefined,
-        deliveryStatus: messageType === 'user' ? ('delivered' as const) : undefined,
-        isFromServer: true
-      };
-    });
-    
-    console.log(`📨 Setting ${fetchedMessages.length} messages to state`);
-    setMessages(fetchedMessages);
-    messagesBackupRef.current = fetchedMessages;
-    setIsHistoryLoaded(true);
-    
-  } catch (error) {
-    console.error('❌ Error processing chat history:', error);
-    console.error('Raw data that caused error:', data);
-    setMessages([]);
-    setIsHistoryLoaded(true);
-  }
-});
-
-                newSocket.on('chat_history_error', (data) => {
-                    console.error('❌ Error fetching chat history:', data.error);
-                    setMessages([]); // Set empty array on error
-                    setIsHistoryLoaded(true);
-                });
-
-                newSocket.on('receive_message', (data) => {
-                    console.log('📨 Received new message:', data); // Debug log
-
-                    setMessages((prev) => {
-                        const updatedMessages = prev.map((msg) => {
-                            if (msg.type === "user" && (msg.deliveryStatus !== 'delivered' || !msg.delivered)) {
-                                const existingTimeout = deliveryTimeoutsRef.current.get(msg.id);
-                                if (existingTimeout) {
-                                    clearTimeout(existingTimeout);
-                                    deliveryTimeoutsRef.current.delete(msg.id);
-                                }
-                                return {
-                                    ...msg,
-                                    delivered: true,
-                                    deliveryStatus: 'delivered' as const
-                                };
-                            }
-                            return msg;
-                        });
-
-                        return [
-                            ...updatedMessages,
-                            {
-                                id: Date.now() + Math.random(),
-                                type: 'ai',
-                                content: data.message,
-                                isTyping: true,
-                                timestamp: data.timestamp,
-                                isFromServer: true
-                            },
-                        ];
-                    });
-
-                    setLoading(false);
-                });
-
-                newSocket.on('connect_error', (error) => {
-                    console.error('❌ Socket connection error:', error.message);
-                });
-
-                newSocket.on('disconnect', (reason) => {
-                    console.log('🔌 Socket disconnected:', reason);
-                });
-
-                return newSocket;
-            } catch (error) {
-                console.error('❌ Error setting up socket:', error);
-            }
-        };
-
-        setupSocket();
+        newSocket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error.message);
+        });
 
         return () => {
-            if (socket) {
-                socket.disconnect();
-            }
-            if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-            }
-            if (typingTimer.current) {
-                clearTimeout(typingTimer.current);
-            }
-        };
-    }, [characterConfig]);
+            newSocket.disconnect();
+        }; 
+    }, [userId, characterConfig]);
 
     const handleImagePreview = useCallback((file: ImagePicker.ImagePickerAsset, text: string = "") => {
+
+        
         const previewMessage: Message = {
-            id: Date.now() + Math.random(),
+            id: Date.now() + Math.random(), // Ensure unique ID
             type: 'user',
             content: text,
             timestamp: generateISTTimestamp(),
@@ -382,12 +267,15 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             imageFile: file,
             isImageUploading: true,
             delivered: false,
-            deliveryStatus: 'pending' as const
+            deliveryStatus: 'pending' as const // Single tick (grey)
         };
 
         setMessages((prev) => [...prev, previewMessage]);
+
+        // Start the delivery status timeout
         setDeliveryStatusWithTimeout(previewMessage.id);
 
+        // Only add text to pending if it's not empty
         if (text.trim()) {
             pendingMessagesRef.current.push(text);
         }
@@ -395,17 +283,10 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         return previewMessage.id;
     }, [setDeliveryStatusWithTimeout]);
 
-    const handleImageUpload = useCallback(async (image_url: string, messageId: number) => {
-        if (!socket) return;
+    const handleImageUpload = useCallback((image_url: string, messageId: number) => {
+        if (!socket || !userId) return;
 
         let messageContent = '';
-        const authData = await getStoredAuthData();
-        const userId = authData?.userId;
-
-        if (!userId) {
-            console.error('User ID not found');
-            return;
-        }
 
         // Update the message and capture its content
         setMessages((prev) => {
@@ -427,7 +308,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         // Send to server
         socket.emit('upload_image', {
-            userId,
+            userId: userId,
             characterId: characterConfig.characterId,
             characterName: characterConfig.characterName,
             image_url: image_url,
@@ -440,45 +321,42 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Start AI processing
         isUserActivelyTypingRef.current = false;
         triggerAiReplyWithDebounce();
-    }, [socket, characterConfig, triggerAiReplyWithDebounce]);
+    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce]);
 
     const handleImageUploadError = useCallback((messageId: number) => {
+        // Clear any timeouts for this message
         const existingTimeout = deliveryTimeoutsRef.current.get(messageId);
         if (existingTimeout) {
             clearTimeout(existingTimeout);
             deliveryTimeoutsRef.current.delete(messageId);
         }
 
+        // Remove the failed upload message
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
     }, []);
 
-    const handleSendMessage = useCallback(async (content: string) => {
-        if (!socket || !content.trim()) return;
+    const handleSendMessage = useCallback((content: string) => {
+        if (!socket || !userId || !content.trim()) return;
 
-        const authData = await getStoredAuthData();
-        const userId = authData?.userId;
-
-        if (!userId) {
-            console.error('User ID not found');
-            return;
-        }
-
+        // Add message to the chat display with IST timestamp
         const userMessage: Message = {
-            id: Date.now() + Math.random(),
+            id: Date.now() + Math.random(), // Ensure unique ID
             type: 'user',
             content,
             timestamp: generateISTTimestamp(),
             isFromServer: false,
             delivered: false,
-            deliveryStatus: 'pending' as const
+            deliveryStatus: 'pending' as const // Single tick (grey)
         };
 
         setMessages((prev) => [...prev, userMessage]);
+
+        // Start the delivery status timeout (single tick -> double tick after 1s)
         setDeliveryStatusWithTimeout(userMessage.id);
 
-        // Send message to backend
+        // Send message to backend for storage immediately
         socket.emit('send_message', {
-            userId,
+            userId: userId,
             characterId: characterConfig.characterId,
             characterName: characterConfig.characterName,
             message: content,
@@ -487,36 +365,41 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Add to pending messages for AI processing
         pendingMessagesRef.current.push(content);
 
-        // Mark user as not actively typing
+        // Mark user as not actively typing (they just sent a message)
         isUserActivelyTypingRef.current = false;
 
-        // Start debounce timer
+        // Start/restart the debounce timer immediately
         triggerAiReplyWithDebounce();
 
         // Clear input value
         setInputValue("");
-    }, [socket, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
+    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
 
     const handleInputChange = useCallback((text: string) => {
         setInputValue(text);
 
+        // Clear any existing typing timer
         if (typingTimer.current) {
             clearTimeout(typingTimer.current);
         }
 
+        // If user is typing (text length > 0), mark as actively typing
         if (text.trim()) {
             if (!isUserActivelyTypingRef.current) {
                 isUserActivelyTypingRef.current = true;
             }
 
+            // Cancel any pending AI calls
             if (debounceTimer.current) {
                 clearTimeout(debounceTimer.current);
                 debounceTimer.current = null;
             }
         } else {
+            // User cleared the input, wait a bit to see if they start typing again
             typingTimer.current = setTimeout(() => {
                 isUserActivelyTypingRef.current = false;
 
+                // If we have pending content (messages or image) and user stopped typing, restart timer
                 if (pendingMessagesRef.current.length > 0 || pendingImageRef.current) {
                     triggerAiReplyWithDebounce();
                 }
@@ -531,39 +414,6 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             )
         );
     }, []);
-
-    // Backup and restore mechanism
-    useEffect(() => {
-        const backupMessages = () => {
-            if (messages.length > 0) {
-                messagesBackupRef.current = [...messages];
-            }
-        };
-
-        const restoreInterval = setInterval(() => {
-            if (isHistoryLoaded && messages.length === 0 && messagesBackupRef.current.length > 0) {
-                console.log('🔄 Restoring messages from backup');
-                setMessages([...messagesBackupRef.current]);
-            }
-        }, 1000);
-
-        backupMessages();
-
-        return () => clearInterval(restoreInterval);
-    }, [messages, isHistoryLoaded]);
-
-    // Debug effect to log messages state changes
-    useEffect(() => {
-        console.log('🔄 Messages state updated:', messages.length, 'messages');
-        if (messages.length > 0) {
-            console.log('📋 Current messages in state:');
-            messages.forEach((msg, idx) => {
-                console.log(`  ${idx + 1}. [${msg.type}] ${msg.content?.substring(0, 100)}${msg.content && msg.content.length > 100 ? '...' : ''}`);
-            });
-        } else {
-            console.log('📭 No messages in state');
-        }
-    }, [messages]);
 
     return (
         <SafeAreaView style={styles.container}>

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Zenny Wave",
+    "name": "Wave.ai",
     "slug": "wave-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/zenny.png",
+        "foregroundImage": "./assets/images/wave-new-logo.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
@@ -27,11 +27,11 @@
         "image": "./assets/images/wave-new-logo2.png",
         "resizeMode": "contain",
         "backgroundColor": "#000000",
-        "mdpi": "./assets/images/zenny.png",
-        "hdpi": "./assets/images/zenny.png",
-        "xhdpi": "./assets/images/zenny.png",
-        "xxhdpi": "./assets/images/zenny.png",
-        "xxxhdpi": "./assets/images/zenny.png"
+        "mdpi": "./assets/images/wave-new-logo.png",
+        "hdpi": "./assets/images/wave-new-logo.png",
+        "xhdpi": "./assets/images/wave-new-logo.png",
+        "xxhdpi": "./assets/images/wave-new-logo.png",
+        "xxxhdpi": "./assets/images/wave-new-logo.png"
       },
       "package": "com.gauravwavedev.waveapp"
     },

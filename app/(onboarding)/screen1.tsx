@@ -3,10 +3,32 @@ import { useRouter } from "expo-router";
 import { MotiImage, MotiText, MotiView } from "moti";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { getStoredAuthData } from '@/services/auth';
+import { navigateTo } from '@/utils/router-helper';
 
 export default function OnboardingScreen() {
-
-  const router = useRouter();
+  const handleGetStarted = async () => {
+    try {
+      // Check authentication status when button is pressed
+      const authData = await getStoredAuthData();
+      
+      if (authData?.token && authData?.userId) {
+        // User is authenticated, redirect to chat
+        console.log('User is authenticated, redirecting to chat');
+        navigateTo.defaultChat();
+        // If you want to use the actual stored userId, uncomment this:
+        // navigateTo.chat(authData.userId);
+      } else {
+        // User is not authenticated, redirect to login
+        console.log('User is not authenticated, redirecting to login');
+        navigateTo.login();
+      }
+    } catch (error) {
+      console.error('Error checking auth in onboarding button:', error);
+      // On error, default to login screen
+      navigateTo.login();
+    }
+  };
 
   return (
     <LinearGradient
@@ -75,7 +97,7 @@ export default function OnboardingScreen() {
         className="absolute bottom-12 left-6 right-6"
       >
         <TouchableOpacity
-          onPress={() => router.push("/(auth)/loginScreen")}
+          onPress={handleGetStarted}
           className="overflow-hidden rounded-full"
           style={{
             shadowColor: "#8B5CF6",

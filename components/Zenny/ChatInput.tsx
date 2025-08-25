@@ -1,17 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
+  Alert,
+  Animated,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Alert,
-  StyleSheet,
-  Animated,
-  Text,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -39,7 +39,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [inputHeight, setInputHeight] = useState(40);
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Sync local state with prop when it changes externally

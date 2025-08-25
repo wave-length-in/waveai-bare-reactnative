@@ -1,142 +1,88 @@
-// ImageMessage.tsx
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
+import React, { useState } from "react";
 import {
-  View,
-  Image,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
   Dimensions,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+const { width, height } = Dimensions.get("window");
 
 interface Message {
   id: number;
-  type: 'user' | 'ai';
+  type: "user" | "ai";
   content: string;
-  timestamp?: string | Date;
-  isTyping?: boolean;
-  delivered?: boolean;
-  deliveryStatus?: 'pending' | 'sent' | 'delivered';
   image_url?: string;
   imageFile?: any;
-  isImageUploading?: boolean;
-  isFromServer?: boolean;
 }
 
 interface ImageMessageProps {
   message: Message;
 }
 
-const { width, height } = Dimensions.get('window');
-
 const ImageMessage: React.FC<ImageMessageProps> = ({ message }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isImageLoading, setIsImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-
-  const handleImagePress = () => {
-    if (!message.isImageUploading && !imageError) {
-      setIsModalVisible(true);
-    }
-  };
-
-  const handleImageLoad = () => {
-    setIsImageLoading(false);
-  };
-
-  const handleImageError = () => {
-    setIsImageLoading(false);
-    setImageError(true);
-  };
+  const [showContent, setShowContent] = useState(false);
 
   const getImageSource = () => {
-    if (message.image_url) {
-      return { uri: message.image_url };
-    } else if (message.imageFile?.uri) {
-      return { uri: message.imageFile.uri };
-    }
+    if (message.image_url) return { uri: message.image_url };
+    if (message.imageFile?.uri) return { uri: message.imageFile.uri };
     return null;
   };
 
   const imageSource = getImageSource();
 
+  const openModal = () => {
+    setIsModalVisible(true);
+    setTimeout(() => setShowContent(true), 20); // trigger animation
+  };
+
+  const closeModal = () => {
+    setShowContent(false); // animate out
+    setTimeout(() => setIsModalVisible(false), 300); // wait for animation to finish
+  };
+
   return (
     <>
-      <TouchableOpacity
-        style={styles.imageContainer}
-        onPress={handleImagePress}
-        activeOpacity={0.8}
-        disabled={message.isImageUploading || imageError}
-      >
-        <LinearGradient
-          colors={message.type === 'user' ? ['#19A4EA', '#1e40af'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-          style={styles.imageBubble}
-        >
-          {imageSource ? (
-            <View style={styles.imageWrapper}>
-              <Image
-                source={imageSource}
-                style={styles.image}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-              />
-              
-              {/* Loading overlay */}
-              {(isImageLoading || message.isImageUploading) && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" color="#fff" />
-                  {message.isImageUploading && (
-                    <Text style={styles.loadingText}>Uploading...</Text>
-                  )}
-                </View>
-              )}
-
-              {/* Error overlay */}
-              {imageError && (
-                <View style={styles.errorOverlay}>
-                  <Ionicons name="image-outline" size={40} color="#fff" />
-                  <Text style={styles.errorText}>Failed to load image</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Ionicons name="image-outline" size={40} color="#fff" />
-              <Text style={styles.placeholderText}>No image available</Text>
-            </View>
-          )}
-
-          {/* Text content below image */}
-          {message.content && (
-            <Text style={styles.imageCaption}>{message.content}</Text>
-          )}
-        </LinearGradient>
+      {/* Thumbnail */}
+      <TouchableOpacity onPress={openModal} activeOpacity={0.8}>
+        {imageSource && (
+          <Image
+            source={imageSource}
+            style={{
+              width: width * 0.6,
+              height: width * 0.6,
+              borderRadius: 12,
+            }}
+            resizeMode="cover"
+          />
+        )}
+        {message.content ? (
+          <Text style={styles.imageCaption}>{message.content}</Text>
+        ) : null}
       </TouchableOpacity>
 
-      {/* Full screen image modal */}
-      <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
+      {/* Fullscreen Modal */}
+      <Modal visible={isModalVisible} transparent animationType="none">
         <View style={styles.modalContainer}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            onPress={() => setIsModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
+          {showContent && (
+            <MotiView
+              from={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "timing", duration: 300 }}
+              style={styles.modalInner}
+            >
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsModalVisible(false)}
-              >
-                <Ionicons name="close" size={30} color="#fff" />
-              </TouchableOpacity>
-              
+                style={styles.backdrop}
+                onPress={closeModal}
+                activeOpacity={1}
+              />
               {imageSource && (
                 <Image
                   source={imageSource}
@@ -144,8 +90,14 @@ const ImageMessage: React.FC<ImageMessageProps> = ({ message }) => {
                   resizeMode="contain"
                 />
               )}
-            </View>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={closeModal}
+              >
+                <Ionicons name="close" size={30} color="#fff" />
+              </TouchableOpacity>
+            </MotiView>
+          )}
         </View>
       </Modal>
     </>
@@ -153,103 +105,38 @@ const ImageMessage: React.FC<ImageMessageProps> = ({ message }) => {
 };
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    maxWidth: width * 0.7,
-  },
-  imageBubble: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderTopRightRadius: 4, // Assuming this is a user message
-  },
-  imageWrapper: {
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: 200,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    marginTop: 12,
-    fontWeight: '500',
-  },
-  errorOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  errorText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  placeholderContainer: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  placeholderText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 8,
-  },
   imageCaption: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    padding: 12,
+    marginTop: 8,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  modalBackdrop: {
+  modalInner: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
   },
-  modalContent: {
-    width: width,
-    height: height,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 8,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   fullScreenImage: {
     width: width * 0.9,
     height: height * 0.8,
+    borderRadius: 12,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    padding: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
   },
 });
 

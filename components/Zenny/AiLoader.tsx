@@ -1,80 +1,121 @@
-// AiLoader.tsx
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import MessageTypeLoading from "@/utils/MessageLoading"; // assume you have RN loader
+import { splitSentencesToLines } from "@/utils/splitSentence";
+import { MotiView } from "moti";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-const AiLoader: React.FC = () => {
-  const dot1 = useRef(new Animated.Value(0)).current;
-  const dot2 = useRef(new Animated.Value(0)).current;
-  const dot3 = useRef(new Animated.Value(0)).current;
+interface FadeInTextProps {
+  text?: string;
+  onComplete?: () => void;
+  onLineAdded?: () => void;
+};
+
+const AiReplyAnimation: React.FC<FadeInTextProps> = ({
+  text,
+  onComplete,
+  onLineAdded,
+}) => {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [showLoader, setShowLoader] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const lines = useMemo(() => splitSentencesToLines(text ?? ""), [text]);
 
   useEffect(() => {
-    const animateDot = (dot: Animated.Value, delay: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dot, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+    setVisibleCount(0);
+    setShowLoader(false);
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (lines.length === 0) {
+      onComplete?.();
+      return;
+    }
+
+    let index = 0;
+
+    const revealNext = () => {
+      setVisibleCount(index + 1);
+      setShowLoader(false);
+
+      setTimeout(() => {
+        onLineAdded?.();
+      }, 50);
+
+      index++;
+
+      if (index < lines.length) {
+        setShowLoader(true);
+        const delay = 1000 + index * 250;
+        timeoutRef.current = setTimeout(revealNext, delay);
+      } else {
+        onComplete?.();
+      }
     };
 
-    const animation = Animated.parallel([
-      animateDot(dot1, 0),
-      animateDot(dot2, 200),
-      animateDot(dot3, 400),
-    ]);
+    revealNext();
 
-    animation.start();
-
-    return () => animation.stop();
-  }, [dot1, dot2, dot3]);
-
-  const getDotStyle = (dot: Animated.Value) => ({
-    opacity: dot.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.3, 1],
-    }),
-    transform: [
-      {
-        scale: dot.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.8, 1.2],
-        }),
-      },
-    ],
-  });
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [text]);
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.dot, getDotStyle(dot1)]} />
-      <Animated.View style={[styles.dot, getDotStyle(dot2)]} />
-      <Animated.View style={[styles.dot, getDotStyle(dot3)]} />
+      {lines.slice(0, visibleCount).map((line, idx) => (
+        <MotiView
+          key={idx}
+          from={{ opacity: 0, translateY: 8 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 500 }}
+          style={styles.bubble}
+        >
+          <Text style={styles.text}>{line}</Text>
+        </MotiView>
+      ))}
+
+      {/* Loader */}
+      {showLoader && visibleCount < lines.length && (
+        <MotiView
+          from={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ type: "timing", duration: 300 }}
+          style={styles.loaderBubble}
+        >
+          <MessageTypeLoading />
+        </MotiView>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
+    gap: 8,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#19A4EA',
-    marginHorizontal: 2,
+  bubble: {
+    alignSelf: "flex-start",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  text: {
+    fontSize: 16,
+    color: "#fff",
+  },
+  loaderBubble: {
+    alignSelf: "flex-start",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
 });
 
-export default AiLoader;
+export default AiReplyAnimation;

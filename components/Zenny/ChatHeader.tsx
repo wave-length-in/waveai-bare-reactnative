@@ -3,14 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import {
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 
 interface ChatHeaderProps {
   name: string;
@@ -25,151 +18,77 @@ const STORAGE_KEYS = {
   MOBILE_NUMBER: 'mobile_number',
 };
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ name, username, image }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
   const router = useRouter();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Confirm Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
+    Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await AsyncStorage.multiRemove([
+              STORAGE_KEYS.AUTH_TOKEN,
+              STORAGE_KEYS.USER_ID,
+              STORAGE_KEYS.USER_DATA,
+              STORAGE_KEYS.MOBILE_NUMBER,
+            ]);
+            router.replace(`/(auth)/loginScreen`);
+          } catch (error) {
+            console.error('Error during logout:', error);
+          }
         },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Clear all stored auth data
-              await AsyncStorage.multiRemove([
-                STORAGE_KEYS.AUTH_TOKEN,
-                STORAGE_KEYS.USER_ID,
-                STORAGE_KEYS.USER_DATA,
-                STORAGE_KEYS.MOBILE_NUMBER,
-              ]);
-              
-              // Navigate to login screen
-              router.replace(`/(auth)/loginScreen`);
-            } catch (error) {
-              console.error('Error during logout:', error);
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
-    <View style={styles.container}>
+    <View className="px-4 py-3 pt-10">
       <LinearGradient
         colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-        style={styles.gradient}
+        className="rounded-2xl border-2 border-white/20"
       >
-        <View style={styles.content}>
-          <View style={styles.leftSection}>
+        <View className="flex-row items-center justify-between px-4 py-3">
+          {/* Left Section */}
+          <View className="flex-row items-center flex-1">
             <Image
               source={
                 image
                   ? { uri: image }
-                  : require('@/assets/images/zenny.jpg') // Default avatar
+                  : require('@/assets/images/zenny.jpg')
               }
-              style={styles.avatar}
+              className="w-12 h-12 rounded-full mr-3"
             />
-            <View style={styles.userInfo}>
-              <Text style={styles.name}>{name}</Text>
-              <View style={styles.statusContainer}>
-                <View style={styles.onlineIndicator} />
-                <Text style={styles.statusText}>Active</Text>
+            <View className="flex-1">
+              <Text className="text-lg font-semibold text-white mb-1">
+                {name}
+              </Text>
+              <View className="flex-row items-center">
+                <Ionicons name="ellipse" size={10} color="#10b981" className="mr-1" />
+                <Text className="text-sm font-medium text-emerald-500">
+                  Active
+                </Text>
               </View>
             </View>
           </View>
 
+          {/* Logout Button */}
           <TouchableOpacity
-            style={styles.logoutButton}
+            className="flex-row items-center bg-white/10 border-2 border-white/20 rounded-2xl px-3 py-2"
             onPress={handleLogout}
             activeOpacity={0.7}
           >
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text className="text-red-500 text-sm font-medium ml-1">
+              Logout
+            </Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 40,
-  },
-  gradient: {
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  onlineIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-});
 
 export default ChatHeader;

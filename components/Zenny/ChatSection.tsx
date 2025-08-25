@@ -9,10 +9,11 @@ import {
 } from 'react-native';
 
 // Import components
-import { default as AiLoader, default as AiReplyAnimation } from '@/components/Zenny/AiLoader';
+import { default as AiReplyAnimation } from '@/components/Zenny/AiLoader';
 import ImageMessage from '@/components/Zenny/ImageMessage';
 import { cleanHtml } from '@/utils/cleanHtml';
 import { formatTimestamp, getDateLabel, shouldShowTimestamp } from '@/utils/formatDatetime';
+import MessageTypeLoading from '@/utils/MessageLoading';
 import { splitSentencesToLines } from '@/utils/splitSentence';
 
 interface ChatSectionProps {
@@ -201,11 +202,11 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                 className="w-6 h-6 rounded-full"
               />
             </View>
-            <View className="flex-col items-start p-2 rounded-tr-2xl rounded-b-2xl bg-white/10">
+            <View className="flex-col items-start p-2 rounded-tr-2xl rounded-b-2xl">
               <Text className="text-white text-base mb-1">
                 Zenny is Typing...
               </Text>
-              <AiLoader />
+              <MessageTypeLoading />
             </View>
           </View>
         )}

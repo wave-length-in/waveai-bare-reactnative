@@ -3,10 +3,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
-    StyleSheet
+    StyleSheet,
+    View
 } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 
@@ -45,6 +47,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const pendingImageRef = useRef<string | null>(null);
     const isUserActivelyTypingRef = useRef(false);
     const deliveryTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+    const [isUploading, setIsUploading] = useState(false);
 
     // Memoize character config to prevent recreation
     const characterConfig = useMemo(() => ({
@@ -252,12 +256,11 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         return () => {
             newSocket.disconnect();
-        }; 
+        };
     }, [userId, characterConfig]);
 
     const handleImagePreview = useCallback((file: ImagePicker.ImagePickerAsset, text: string = "") => {
 
-        
         const previewMessage: Message = {
             id: Date.now() + Math.random(), // Ensure unique ID
             type: 'user',
@@ -279,6 +282,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         if (text.trim()) {
             pendingMessagesRef.current.push(text);
         }
+
+        setIsUploading(true);
 
         return previewMessage.id;
     }, [setDeliveryStatusWithTimeout]);
@@ -305,6 +310,10 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 return msg;
             });
         });
+
+        // 🔹 Hide loader after successful upload
+        setIsUploading(false);
+
 
         // Send to server
         socket.emit('upload_image', {
@@ -333,6 +342,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         // Remove the failed upload message
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
+        setIsUploading(false);
     }, []);
 
     const handleSendMessage = useCallback((content: string) => {
@@ -431,6 +441,13 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     style={styles.cosmicOverlay}
                 />
 
+                {/* Absolute loading spinner */}
+                {isUploading && (
+                    <View style={styles.loaderOverlay}>
+                        <ActivityIndicator size="large" color="#FFF" />
+                    </View>
+                )}
+
                 <KeyboardAvoidingView
                     style={styles.keyboardAvoidingView}
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -478,6 +495,13 @@ const styles = StyleSheet.create({
     },
     keyboardAvoidingView: {
         flex: 1,
+    },
+    loaderOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.7)",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 999,
     },
 });
 

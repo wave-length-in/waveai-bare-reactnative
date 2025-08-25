@@ -1,45 +1,69 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import { MotiView } from "moti";
+import { MotiView } from 'moti';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
-const dots = [1, 2, 3];
+const AiLoader: React.FC = () => {
+  const dotAnimation = {
+    from: {
+      opacity: 0.4,
+      scale: 0.8,
+    },
+    animate: {
+      opacity: 1,
+      scale: 1,
+    },
+    transition: {
+      type: 'timing' as const,
+      duration: 600,
+      loop: true,
+      repeatReverse: true,
+    },
+  };
 
-const MessageTypeLoading: React.FC = () => {
   return (
     <View style={styles.container}>
-      {dots.map((dot, index) => (
-        <MotiView
-          key={index}
-          from={{ translateY: 0 }}
-          animate={{ translateY: -8 }}
-          transition={{
-            loop: true,
-            type: "timing",
-            duration: 600,
-            delay: index * 200,
-          }}
-          style={styles.dot}
-        />
-      ))}
+      <MotiView
+        {...dotAnimation}
+        transition={{
+          ...dotAnimation.transition,
+          delay: 0,
+        }}
+        style={styles.dot}
+      />
+      <MotiView
+        {...dotAnimation}
+        transition={{
+          ...dotAnimation.transition,
+          delay: 200,
+        }}
+        style={styles.dot}
+      />
+      <MotiView
+        {...dotAnimation}
+        transition={{
+          ...dotAnimation.transition,
+          delay: 200,
+        }}
+        style={styles.dot}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dot: {
-    width: 8,
-    height: 8,
+    width: 10,
+    height: 10,
+    backgroundColor: '#ffffff',
     borderRadius: 8,
-    marginHorizontal: 4,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
 });
 
-export default MessageTypeLoading;
+export default AiLoader;

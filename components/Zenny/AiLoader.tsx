@@ -2,13 +2,13 @@ import MessageTypeLoading from "@/utils/MessageLoading"; // assume you have RN l
 import { splitSentencesToLines } from "@/utils/splitSentence";
 import { MotiView } from "moti";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 interface FadeInTextProps {
   text?: string;
   onComplete?: () => void;
   onLineAdded?: () => void;
-};
+}
 
 const AiReplyAnimation: React.FC<FadeInTextProps> = ({
   text,
@@ -60,16 +60,16 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
   }, [text]);
 
   return (
-    <View style={styles.container}>
+    <View className="gap-2">
       {lines.slice(0, visibleCount).map((line, idx) => (
         <MotiView
           key={idx}
           from={{ opacity: 0, translateY: 8 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: "timing", duration: 500 }}
-          style={styles.bubble}
+          className="self-start rounded-2xl bg-white/10 border border-white/10 px-3 py-2 mb-1"
         >
-          <Text style={styles.text}>{line}</Text>
+          <Text className="text-base text-white">{line}</Text>
         </MotiView>
       ))}
 
@@ -80,7 +80,7 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ type: "timing", duration: 300 }}
-          style={styles.loaderBubble}
+          className="self-start rounded-2xl bg-white/10 border border-white/10 px-2 py-1.5"
         >
           <MessageTypeLoading />
         </MotiView>
@@ -88,34 +88,5 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 8,
-  },
-  bubble: {
-    alignSelf: "flex-start",
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 4,
-  },
-  text: {
-    fontSize: 16,
-    color: "#fff",
-  },
-  loaderBubble: {
-    alignSelf: "flex-start",
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-});
 
 export default AiReplyAnimation;

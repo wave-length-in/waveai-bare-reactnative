@@ -40,6 +40,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const [socket, setSocket] = useState<Socket | null>(null);
     const [inputValue, setInputValue] = useState("");
     const [userId, setUserId] = useState<string | null>(null);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(true); // New state for skeleton
+    
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -191,6 +193,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         newSocket.on('connect', () => {
             console.log('✅ Connected to SocketIO');
+            // Set loading history state when fetching begins
+            setIsLoadingHistory(true);
             newSocket.emit('fetch_chat_history', {
                 userId: userId,
                 characterId: characterConfig.characterId,
@@ -209,10 +213,14 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 deliveryStatus: msg.sender === "user" ? ('delivered' as const) : undefined
             }));
             setMessages(fetchedMessages);
+            // Hide skeleton after messages are loaded
+            setIsLoadingHistory(false);
         });
 
         newSocket.on('chat_history_error', (data) => {
             console.error('Error fetching chat history:', data.error);
+            // Hide skeleton even on error
+            setIsLoadingHistory(false);
         });
 
         newSocket.on('receive_message', (data) => {
@@ -252,6 +260,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         newSocket.on('connect_error', (error) => {
             console.error('Socket connection error:', error.message);
+            // Hide skeleton on connection error
+            setIsLoadingHistory(false);
         });
 
         return () => {
@@ -260,7 +270,6 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     }, [userId, characterConfig]);
 
     const handleImagePreview = useCallback((file: ImagePicker.ImagePickerAsset, text: string = "") => {
-
         const previewMessage: Message = {
             id: Date.now() + Math.random(), // Ensure unique ID
             type: 'user',
@@ -311,9 +320,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             });
         });
 
-        // 🔹 Hide loader after successful upload
+        // Hide loader after successful upload
         setIsUploading(false);
-
 
         // Send to server
         socket.emit('upload_image', {
@@ -380,9 +388,6 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         // Start/restart the debounce timer immediately
         triggerAiReplyWithDebounce();
-
-        // Clear input value
-        setInputValue("");
     }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
 
     const handleInputChange = useCallback((text: string) => {
@@ -441,7 +446,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     style={styles.cosmicOverlay}
                 />
 
-                {/* Absolute loading spinner */}
+                {/* Absolute loading spinner for image uploads */}
                 {isUploading && (
                     <View style={styles.loaderOverlay}>
                         <ActivityIndicator size="large" color="#FFF" />
@@ -463,6 +468,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         messages={messages}
                         loading={loading}
                         onTypingComplete={handleTypingComplete}
+                        isLoadingHistory={isLoadingHistory}
                     />
 
                     <ChatInput

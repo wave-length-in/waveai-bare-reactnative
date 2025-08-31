@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Image,
   ScrollView,
@@ -15,30 +15,45 @@ import { cleanHtml } from '@/utils/cleanHtml';
 import { formatTimestamp, getDateLabel, shouldShowTimestamp } from '@/utils/formatDatetime';
 import MessageTypeLoading from '@/utils/MessageLoading';
 import { splitSentencesToLines } from '@/utils/splitSentence';
+import SkeletonLoader from './SkeletonLoader';
 
 interface ChatSectionProps {
   loading?: boolean;
   messages: Message[];
   onTypingComplete?: (messageId: number) => void;
+  isLoadingHistory?: boolean
 }
 
 export const ChatSection: React.FC<ChatSectionProps> = ({
   loading,
   messages,
   onTypingComplete,
+  isLoadingHistory = false
 }) => {
+
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  };
+  const scrollToBottom = useCallback(() => {
+    if (scrollViewRef.current) {
+      // Use scrollToEnd with animated: false for immediate scroll
+      scrollViewRef.current.scrollToEnd({ animated: false });
+    }
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0 || loading) {
       // Small delay to ensure content is rendered
-      setTimeout(scrollToBottom, 100);
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
     }
-  }, [messages, loading]);
+  }, [messages.length, loading, scrollToBottom]);
+
+  useEffect(() => {
+    const timer = setTimeout(scrollToBottom, 50);
+    return () => clearTimeout(timer);
+  }, [messages, scrollToBottom]);
+
 
   // Helper function to render delivery status icon
   const renderDeliveryStatus = (message: Message) => {
@@ -72,6 +87,10 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
     return <Ionicons name="checkmark" size={15} color="rgba(255,255,255,0.7)" />;
   };
 
+  if (isLoadingHistory) {
+    return <SkeletonLoader />;
+  };
+
   // Track last date to insert separators
   let lastDateLabel: string | null = null;
 
@@ -83,6 +102,10 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
         contentContainerClassName="py-4 bg-"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 10,
+        }}
       >
         {/* Privacy Notice - matching Next.js styling */}
         <View className="mt-20 md:mt-0 mb-3">
@@ -133,8 +156,8 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                 )}
 
                 <View className={`${message.type === "user"
-                    ? "max-w-[70%]"
-                    : "max-w-[85%] text-white"
+                  ? "max-w-[70%]"
+                  : "max-w-[85%] text-white"
                   }`}>
                   {message.type === "ai" && message.isTyping ? (
                     <AiReplyAnimation
@@ -178,8 +201,8 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                   {/* Timestamp and delivery status - matching Next.js logic */}
                   {showTimestamp && !message.isTyping && (
                     <View className={`flex-row gap-1 mt-1 ${message.type === "ai"
-                        ? "text-xs text-white self-start"
-                        : "text-xs justify-end text-white self-end"
+                      ? "text-xs text-white self-start"
+                      : "text-xs justify-end text-white self-end"
                       }`}>
                       <Text className="text-white text-xs">
                         {formatTimestamp(message.timestamp)}

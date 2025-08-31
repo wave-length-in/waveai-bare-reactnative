@@ -4,7 +4,7 @@
     "slug": "wave-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/wave-new-logo.png",
+    "icon": "./assets/images/app_icon.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/wave-new-logo.png",
+        "foregroundImage": "./assets/images/app_icon.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
@@ -27,11 +27,11 @@
         "image": "./assets/images/wave-new-logo2.png",
         "resizeMode": "contain",
         "backgroundColor": "#000000",
-        "mdpi": "./assets/images/wave-new-logo.png",
-        "hdpi": "./assets/images/wave-new-logo.png",
-        "xhdpi": "./assets/images/wave-new-logo.png",
-        "xxhdpi": "./assets/images/wave-new-logo.png",
-        "xxxhdpi": "./assets/images/wave-new-logo.png"
+        "mdpi": "./assets/images/app_icon.png",
+        "hdpi": "./assets/images/app_icon.png",
+        "xhdpi": "./assets/images/app_icon.png",
+        "xxhdpi": "./assets/images/app_icon.png",
+        "xxxhdpi": "./assets/images/app_icon.png"
       },
       "package": "com.gauravwavedev.waveapp"
     },

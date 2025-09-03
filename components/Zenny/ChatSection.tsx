@@ -15,7 +15,9 @@ import { cleanHtml } from '@/utils/cleanHtml';
 import { formatTimestamp, getDateLabel, shouldShowTimestamp } from '@/utils/formatDatetime';
 import MessageTypeLoading from '@/utils/MessageLoading';
 import { splitSentencesToLines } from '@/utils/splitSentence';
+import LinkPreviewComponent from './LinkPreviewComponent';
 import SkeletonLoader from './SkeletonLoader';
+import { TextWithLinks } from './TextWithLinks';
 
 interface ChatSectionProps {
   loading?: boolean;
@@ -169,27 +171,45 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                     <>
                       {message.type === "ai" ? (
                         <View className="space-y-2">
-                          {splitSentencesToLines(message.content).map((line, idx) => (
-                            <View
-                              key={idx}
-                              className="px-4 self-start py-2 my-1 rounded-tr-2xl bg-white/10 rounded-b-2xl border border-white/10"
-                            >
-                              <Text className="text-white text-base">
-                                {cleanHtml(line)}
-                              </Text>
-                            </View>
-                          ))}
+                          {splitSentencesToLines(message.content || "").map((line, idx) => {
+                            // If line is a link object
+                            if (typeof line === "object" && line.type === "link") {
+                              return (
+                                <View key={idx} className="rounded-2xl w-fit text-md md:text-lg">
+                                  <LinkPreviewComponent url={line.url} />
+                                </View>
+                              );
+                            }
+
+                            // Check inline URLs
+                            const hasInlineUrl = /https?:\/\/[^\s<>"'{}|\\^`\[\]]+/gi.test(
+                              line as string
+                            );
+
+                            return (
+                              <View
+                                key={idx}
+                                className="rounded-2xl self-start mt-2 rounded-b-2xl bg-white/10 border border-white/10 px-4 py-2"
+                              >
+                                {hasInlineUrl ? (
+                                  <TextWithLinks content={line as string} />
+                                ) : (
+                                  <Text className="text-white text-base">
+                                    {cleanHtml(line as string)}
+                                  </Text>
+                                )}
+                              </View>
+                            );
+                          })}
                         </View>
                       ) : (
                         <>
                           {isImageMessage && message.image_url ? (
                             <ImageMessage message={message} />
                           ) : message.content ? (
-                            <View
-                              className="px-4 py-2 bg-[#19A4EA] rounded-t-2xl rounded-bl-2xl overflow-hidden self-end"
-                            >
+                            <View className="rounded-t-2xl rounded-bl-2xl bg-[#19A4EA] px-4 py-2">
                               <Text className="text-white text-base">
-                                {cleanHtml(message.content)}
+                                <TextWithLinks content={message.content} />
                               </Text>
                             </View>
                           ) : null}

@@ -7,7 +7,6 @@
     "icon": "./assets/images/app_icon.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -32,8 +31,7 @@
         "xhdpi": "./assets/images/app_icon.png",
         "xxhdpi": "./assets/images/app_icon.png",
         "xxxhdpi": "./assets/images/app_icon.png"
-      },
-      "package": "com.gauravwavedev.waveapp"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -63,11 +61,6 @@
       "image": "./assets/images/wave-new-logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "2e186c1e-13e7-41f9-aa5c-d90840c55f1a"
-      }
     }
   }
 }

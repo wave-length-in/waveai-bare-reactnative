@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import "../styles/global.css";
-import { initAnalytics } from '@/firebase/analytics';
+// import { initAnalytics } from '@/firebase/analytics';
 
 function InitialAuthCheck({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -70,9 +70,9 @@ export default function RootLayout() {
   });
 
   // Initialize analytics when app starts
-  useEffect(() => {
-    initAnalytics();
-  }, []);
+  // useEffect(() => {
+  //   initAnalytics();
+  // }, []);
 
   if (!loaded) {
     return null;

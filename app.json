@@ -31,7 +31,8 @@
         "xhdpi": "./assets/images/app_icon.png",
         "xxhdpi": "./assets/images/app_icon.png",
         "xxxhdpi": "./assets/images/app_icon.png"
-      }
+      },
+      "package": "com.wave.ai.waveapp"
     },
     "web": {
       "bundler": "metro",
@@ -61,6 +62,12 @@
       "image": "./assets/images/wave-new-logo2.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dc97f190-ef09-45c4-9e10-dbb8cb50b01f"
+      }
     }
   }
 }

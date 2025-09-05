@@ -72,4 +72,4 @@ export function splitSentencesToLines(text: string): (string | { type: 'link'; u
   });
 
   return result;
-}
+};

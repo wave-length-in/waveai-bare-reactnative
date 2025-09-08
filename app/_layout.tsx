@@ -24,14 +24,14 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
     // Don't do anything until the navigation state is ready
     if (!navigationState?.key) {
       return;
-    }
+    };
 
     const checkAuthState = async () => {
       try {
         console.log(`[${Platform.OS}] App Starting...`, { segments });
         console.log(`[${Platform.OS}] Navigation state ready:`, navigationState?.key);
         
-        // Prevent multiple navigations
+        // Prevent multiple navigations Check the Platform
         if (hasNavigated) {
           console.log(`[${Platform.OS}] Already navigated, skipping`);
           setIsLoading(false);

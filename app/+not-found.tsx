@@ -17,7 +17,7 @@ export default function NotFoundScreen() {
       <Text style={styles.text}>Redirecting...</Text>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {

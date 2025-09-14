@@ -57,6 +57,42 @@ const LoginScreen: React.FC = () => {
       return;
     }
 
+    // Bypass OTP for specific number
+    if (mobile === "8739900038") {
+      setLoading(true);
+      try {
+        // Store mobile number
+        await AsyncStorage.setItem(STORAGE_KEYS.MOBILE_NUMBER, `+91${mobile}`);
+
+        // Directly call login API
+        const loginResponse = await loginUser(`+91${mobile}`);
+
+        if (loginResponse.success) {
+          // User exists, login successful
+          showToast("success", "Login Successful", "Welcome back!");
+
+          // Navigate to chat with userId
+          setTimeout(() => {
+            router.push(`/chat/688210873496b5e441480d22`);
+          }, 1000);
+        }
+      } catch (loginError: any) {
+        // User doesn't exist, redirect to registration
+        if (loginError.message.includes("not found") || loginError.message.includes("does not exist")) {
+          showToast("info", "New User", "Let's create your account!");
+          setTimeout(() => {
+            router.push("/(auth)/basicDetails");
+          }, 1000);
+        } else {
+          showToast("error", "Error", loginError.message || "Login failed");
+        }
+      } finally {
+        setLoading(false);
+      }
+      return; // Exit early for bypass number
+    }
+
+    // Normal OTP flow for other numbers
     setLoading(true);
     try {
       // Store mobile number
@@ -214,7 +250,7 @@ const LoginScreen: React.FC = () => {
               onChangeMobile={() => {
                 setMobile('');
                 setOtpSent(false);
-                setOtp(["", "", "", "","",""]);
+                setOtp(["", "", "", "", "", ""]);
               }}
               onVerifyOtp={handleVerifyOtp}
               onResendOtp={handleResendOtp}

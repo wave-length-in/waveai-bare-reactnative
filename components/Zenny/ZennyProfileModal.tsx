@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,7 +45,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
       const authToken = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const userId = await AsyncStorage.getItem(STORAGE_KEYS.USER_ID);
       const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
-
+      
       return {
         authToken,
         userId,
@@ -120,7 +120,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
       >
         <View className="flex-row items-center justify-between px-4 py-3">
           {/* Left Section - Clickable Profile */}
-          <TouchableOpacity
+          <TouchableOpacity 
             className="flex-row items-center flex-1"
             onPress={handleProfilePress}
             activeOpacity={0.7}
@@ -164,8 +164,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
         animationType="fade"
         onRequestClose={() => setShowMenu(false)}
       >
-        <Pressable
-          className="flex-1 bg-black/50"
+        <Pressable 
+          className="flex-1 bg-black/50" 
           onPress={() => setShowMenu(false)}
         >
           <View className="flex-1 justify-start items-end pt-20 pr-6">
@@ -176,18 +176,20 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
               {menuOptions.map((option, index) => (
                 <TouchableOpacity
                   key={option.id}
-                  className={`flex-row items-center px-4 py-3 ${index === 0 ? 'rounded-t-2xl' : ''
-                    } ${index === menuOptions.length - 1 ? 'rounded-b-2xl' : ''} ${index < menuOptions.length - 1 ? 'border-b border-white/10' : ''
-                    }`}
+                  className={`flex-row items-center px-4 py-3 ${
+                    index === 0 ? 'rounded-t-2xl' : ''
+                  } ${index === menuOptions.length - 1 ? 'rounded-b-2xl' : ''} ${
+                    index < menuOptions.length - 1 ? 'border-b border-white/10' : ''
+                  }`}
                   onPress={option.onPress}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={option.icon as any}
-                    size={20}
-                    color={option.color}
+                  <Ionicons 
+                    name={option.icon as any} 
+                    size={20} 
+                    color={option.color} 
                   />
-                  <Text
+                  <Text 
                     className="text-white text-base font-medium ml-3"
                     style={{ color: option.color }}
                   >
@@ -207,52 +209,40 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
         animationType="fade"
         onRequestClose={closeProfileModal}
       >
-        <Pressable
-          className="flex-1 bg-black/80"
+        <Pressable 
+          className="flex-1 bg-black/80" 
           onPress={closeProfileModal}
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            className="px-6 pb-6"
-          >
-            <View className="flex-1 justify-center items-center p-4">
-              <MotiView
-                from={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{
-                  type: 'timing',
-                  duration: 400,
-                }}
-                className="w-full h-[40vh] max-w-sm"
+          <View className="flex-1 justify-center items-center p-4">
+            <MotiView
+              from={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{
+                type: 'timing',
+                duration: 400,
+              }}
+              className="w-full max-w-sm"
+            >
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                className="rounded-3xl overflow-hidden shadow-2xl"
               >
-                <LinearGradient
-                  colors={['#000', '#111']}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
+                {/* Header with Close Button */}
+                <View className="flex-row justify-between items-center p-4 pt-6">
+                  <View />
+                  <TouchableOpacity
+                    onPress={closeProfileModal}
+                    className="bg-white/20 rounded-full p-2"
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close" size={20} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView 
+                  showsVerticalScrollIndicator={false}
+                  className="px-6 pb-6"
                 >
-                  {/* Cosmic Background Overlay */}
-                  <View style={styles.backgroundOverlay} pointerEvents="none">
-                    <LinearGradient
-                      colors={['transparent', 'rgba(30, 144, 255, 0.2)', 'transparent']}
-                      start={{ x: 0, y: 0.3 }}
-                      end={{ x: 1, y: 0.7 }}
-                      style={styles.cosmicGradient}
-                      pointerEvents="none"
-                    />
-                  </View>
-                  {/* Header with Close Button */}
-                  <View className="flex-row justify-between items-center p-4 pt-6">
-                    <View />
-                    <TouchableOpacity
-                      onPress={closeProfileModal}
-                      className="bg-white/20 rounded-full p-2"
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="close" size={20} color="white" />
-                    </TouchableOpacity>
-                  </View>
-
-
                   {/* Profile Image */}
                   <MotiView
                     from={{ scale: 0.5, opacity: 0 }}
@@ -271,7 +261,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
                         resizeMode="cover"
                       />
                     </View>
-
+                    
                     <MotiView
                       from={{ translateY: 20, opacity: 0 }}
                       animate={{ translateY: 0, opacity: 1 }}
@@ -294,6 +284,22 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
                         </Text>
                       </View>
                     </MotiView>
+                  </MotiView>
+
+                  {/* Bio Section */}
+                  <MotiView
+                    from={{ translateY: 30, opacity: 0 }}
+                    animate={{ translateY: 0, opacity: 1 }}
+                    transition={{
+                      type: 'timing',
+                      duration: 500,
+                      delay: 600,
+                    }}
+                    className="bg-white/10 rounded-2xl p-4 mb-4"
+                  >
+                    <Text className="text-white/90 text-base leading-6">
+                      "{zennyInfo.bio}"
+                    </Text>
                   </MotiView>
 
                   {/* Info Cards */}
@@ -413,14 +419,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
                       </Text>
                     </View>
                     <Text className="text-white/90 text-sm">
-                      I'm here to listen, understand, and be your supportive friend.
+                      I'm here to listen, understand, and be your supportive friend. 
                       Ready to dive into some meaningful conversations? 🌊
                     </Text>
                   </MotiView>
-                </LinearGradient>
-              </MotiView>
-            </View>
-          </ScrollView>
+                </ScrollView>
+              </LinearGradient>
+            </MotiView>
+          </View>
         </Pressable>
       </Modal>
     </View>
@@ -428,27 +434,3 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
 };
 
 export default ChatHeader;
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative',
-  },
-  backgroundOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  cosmicGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-})

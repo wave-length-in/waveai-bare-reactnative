@@ -1,6 +1,5 @@
 // utils/routing-helper.ts
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
 
 export const AppRoutes = {
   onboarding: '/(onboarding)/screen1',
@@ -9,6 +8,7 @@ export const AppRoutes = {
   home: '/(main)/home',
   chat: (id: string) => `/(main)/chat/${id}`,
   defaultChat: '/(main)/chat/688210873496b5e441480d22',
+  report: '/(main)/report',
 } as const;
 
 // Safe navigation with platform-specific handling
@@ -45,6 +45,7 @@ export const navigateTo = {
   home: () => safeNavigate(AppRoutes.home),
   chat: (id: string) => safeNavigate(AppRoutes.chat(id)),
   defaultChat: () => safeNavigate(AppRoutes.defaultChat),
+  report: () => safeNavigate(AppRoutes.report),
   
   // Replace versions
   replaceToOnboarding: () => safeNavigate(AppRoutes.onboarding, true),
@@ -52,4 +53,5 @@ export const navigateTo = {
   replaceToHome: () => safeNavigate(AppRoutes.home, true),
   replaceToChat: (id: string) => safeNavigate(AppRoutes.chat(id), true),
   replaceToDefaultChat: () => safeNavigate(AppRoutes.defaultChat, true),
+  replaceToReport: () => safeNavigate(AppRoutes.report, true),
 };

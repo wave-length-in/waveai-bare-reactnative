@@ -15,5 +15,16 @@ interface Message {
   image_url?: string;         // Alternative naming (if your API uses this)
   isImageUploading?: boolean; // Loading state for image uploads
 
+  // Audio-related properties
+  audioFile?: string;         // For local audio file URI
+  audioUrl?: string;          // For uploaded audio URL from server
+  audio_url?: string;         // Alternative naming (if your API uses this)
+  isAudioUploading?: boolean; // Loading state for audio uploads
+  audioDuration?: number;     // Duration in milliseconds
+  
+  // TTS (Text-to-Speech) properties for AI messages
+  ttsAudioUrl?: string;       // Generated TTS audio URL
+  ttsProcessing?: boolean;    // Loading state for TTS generation
+
   deliveryStatus?: 'pending' | 'sent' | 'delivered';
 }

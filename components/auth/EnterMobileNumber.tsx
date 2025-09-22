@@ -17,6 +17,7 @@ interface EnterMobileNumberProps {
   setMobile: (value: string) => void;
   onGetOtp: () => void;
   loading?: boolean;
+  onBack?: () => void;
 }
 
 const EnterMobileNumber: React.FC<EnterMobileNumberProps> = ({
@@ -24,6 +25,7 @@ const EnterMobileNumber: React.FC<EnterMobileNumberProps> = ({
   setMobile,
   onGetOtp,
   loading = false,
+  onBack,
 }) => {
   const isValid = mobile.length === 10;
 
@@ -33,6 +35,11 @@ const EnterMobileNumber: React.FC<EnterMobileNumberProps> = ({
       className="flex-1 px-4"
     >
       <View className="space-y-[2rem] w-[90%]">
+        {onBack && (
+          <TouchableOpacity onPress={onBack} className="self-start mb-4">
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
         <Text className="text-4xl text-white font-sans my-4">Login</Text>
         <Text className="text-gray-500 mb-2 text-base">
           Enter your phone number to login

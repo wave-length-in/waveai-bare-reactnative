@@ -1,16 +1,20 @@
-import EnterMobileNumber from "@/components/auth/EnterMobileNumber";
+import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import OTPVerification from "@/components/auth/OtpVerification";
-import { showToast } from "@/components/ui/Toast";
-import { loginUser, sendOtp, STORAGE_KEYS, verifyOtp } from "@/services/auth";
+import { useToast } from "@/components/ui/Toast";
+import { useAuth } from '@/contexts/AuthContext';
+import { configureGoogleSignIn, loginUser, sendOtp, signInWithGoogle, STORAGE_KEYS, verifyOtp } from "@/services/auth";
+import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetView } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Keyboard, Text, TextInput, View } from 'react-native';
+import { Image, Keyboard, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const LoginScreen: React.FC = () => {
   const router = useRouter();
+  const { setUser } = useAuth();
+  const { showToast } = useToast();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [snapPoints, setSnapPoints] = useState<string[]>(["50%"]);
   const [mobile, setMobile] = useState('');
@@ -18,11 +22,12 @@ const LoginScreen: React.FC = () => {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   const handleKeyboardShow = () => {
     setIsKeyboardVisible(true);
-    setSnapPoints(["50%", "80%"]);
+    setSnapPoints(["60%", "80%"]);
   };
 
   const handleKeyboardHide = () => {
@@ -31,6 +36,9 @@ const LoginScreen: React.FC = () => {
   };
 
   useEffect(() => {
+    // Configure Google Sign-In
+    configureGoogleSignIn();
+    
     const showSubscription = Keyboard.addListener("keyboardDidShow", handleKeyboardShow);
     const hideSubscription = Keyboard.addListener("keyboardDidHide", handleKeyboardHide);
     return () => {
@@ -51,48 +59,67 @@ const LoginScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, [snapPoints, isKeyboardVisible]);
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      console.log('🔍 User initiated Google Sign-In...');
+      const googleUser = await signInWithGoogle();
+      
+      // Check if user exists with this email
+      try {
+        const loginResponse = await loginUser(undefined, googleUser.email);
+        
+        if (loginResponse.success) {
+          // User exists, login successful
+          showToast("success", "Login Successful", "Welcome back!");
+          
+          // Navigate to chat with userId
+          setTimeout(() => {
+            router.push(`/chat/${loginResponse.data.userId}`);
+          }, 1000);
+        }
+      } catch (loginError: any) {
+        // User doesn't exist, redirect to Google signup flow
+        if (loginError.message.includes("not found") || loginError.message.includes("does not exist")) {
+          // Store Google user data for signup flow
+          await AsyncStorage.setItem('googleUserData', JSON.stringify({
+            ...googleUser,
+            authMethod: 'google'
+          }));
+          
+          showToast("info", "New User", "Let's complete your profile!");
+          setTimeout(() => {
+            router.push("/(auth)/googleSignup");
+          }, 1000);
+        } else {
+          throw loginError;
+        }
+      }
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      
+      // Handle specific Google Sign-In errors gracefully
+      if (error.message.includes("DEVELOPER_ERROR")) {
+        showToast("error", "Google Sign-In Not Available", "Google Sign-In is not configured yet. Please use mobile number login.");
+      } else if (error.message.includes("cancelled")) {
+        showToast("info", "Sign-In Cancelled", "You cancelled the Google sign-in process.");
+      } else if (error.message.includes("Play services not available")) {
+        showToast("error", "Google Play Services Required", "Please install Google Play Services to use Google Sign-In.");
+      } else {
+        showToast("error", "Google Sign-In Failed", "Please try mobile number login instead.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleGetOtp = async () => {
     if (mobile.trim().length !== 10) {
       showToast("error", "Invalid Mobile Number", "Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    // Bypass OTP for specific number
-    if (mobile === "8739900038") {
-      setLoading(true);
-      try {
-        // Store mobile number
-        await AsyncStorage.setItem(STORAGE_KEYS.MOBILE_NUMBER, `+91${mobile}`);
-
-        // Directly call login API
-        const loginResponse = await loginUser(`+91${mobile}`);
-
-        if (loginResponse.success) {
-          // User exists, login successful
-          showToast("success", "Login Successful", "Welcome back!");
-
-          // Navigate to chat with userId
-          setTimeout(() => {
-            router.push(`/chat/688210873496b5e441480d22`);
-          }, 1000);
-        }
-      } catch (loginError: any) {
-        // User doesn't exist, redirect to registration
-        if (loginError.message.includes("not found") || loginError.message.includes("does not exist")) {
-          showToast("info", "New User", "Let's create your account!");
-          setTimeout(() => {
-            router.push("/(auth)/basicDetails");
-          }, 1000);
-        } else {
-          showToast("error", "Error", loginError.message || "Login failed");
-        }
-      } finally {
-        setLoading(false);
-      }
-      return; // Exit early for bypass number
-    }
-
-    // Normal OTP flow for other numbers
+    // Send OTP for mobile number verification
     setLoading(true);
     try {
       // Store mobile number
@@ -137,7 +164,7 @@ const LoginScreen: React.FC = () => {
 
             // Navigate to chat with userId
             setTimeout(() => {
-              router.push(`/chat/688210873496b5e441480d22`);
+              router.push(`/chat/${loginResponse.data.userId}`);
             }, 1000);
           }
         } catch (loginError: any) {
@@ -233,15 +260,68 @@ const LoginScreen: React.FC = () => {
         )}
         handleIndicatorStyle={{ backgroundColor: "#fff" }}
       >
-        <BottomSheetView className="h-full items-center backdrop-blur-xl bg-black/40">
+        <BottomSheetView className="h-full items-center backdrop-blur-xl bg-black/40 px-6">
           {!otpSent ? (
-            <EnterMobileNumber
-              mobile={mobile}
-              setMobile={setMobile}
-              onGetOtp={handleGetOtp}
-              loading={loading}
-            />
+            // Show main authentication screen with mobile input
+            <View className="w-full">
+              <Text className="text-white text-3xl font-medium mb-8 mt-4 text-left">
+                Login
+              </Text>
+              
+              {/* Mobile Number Input */}
+              <View className="w-full mb-3">
+                {/* <Text className="text-white text-lg mb-3">Enter your mobile number</Text> */}
+                <View className="flex-row items-center bg-white/10 rounded-full px-4 border border-white/20">
+                  <Text className="text-lg text-white mr-2">+91</Text>
+                  <TextInput
+                    placeholder="Enter Mobile Number"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    keyboardType="numeric"
+                    maxLength={10}
+                    value={mobile}
+                    onChangeText={setMobile}
+                    className="flex-1 text-lg py-3 text-white"
+                    editable={!loading}
+                  />
+                </View>
+                
+                {/* Get OTP Button */}
+                <TouchableOpacity
+                  onPress={handleGetOtp}
+                  disabled={mobile.length !== 10 || loading}
+                  className={`mt-4 rounded-full overflow-hidden ${(mobile.length !== 10 || loading) ? 'opacity-50' : ''}`}
+                >
+                  <LinearGradient
+                    colors={["#19A4EA", "#111"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    className="flex-row items-center justify-center py-4 px-6 rounded-full"
+                  >
+                    <Ionicons name="call" size={20} color="#fff" />
+                    <Text className="text-white font-semibold text-lg ml-2">
+                      {loading ? "Sending OTP..." : "Get OTP"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View className="flex-row items-center my-5 w-full">
+                <View className="flex-1 h-px bg-gray-300" />
+                <Text className="mx-4 text-gray-300">OR</Text>
+                <View className="flex-1 h-px bg-gray-300" />
+              </View>
+
+              {/* Google Option */}
+              <GoogleAuthButton
+                onPress={handleGoogleSignIn}
+                loading={googleLoading}
+                disabled={loading}
+                title="Continue with Google"
+              />
+            </View>
           ) : (
+            // OTP Verification Screen
             <OTPVerification
               otp={otp}
               mobile={mobile}

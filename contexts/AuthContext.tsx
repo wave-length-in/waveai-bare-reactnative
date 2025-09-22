@@ -1,13 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { signOutGoogle } from "@/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
   userId: string;
   userName: string;
-  mobileNumber: string;
-  mobileNumberVerified: boolean;
-  age: number;
-  gender: string;
+  mobileNumber?: string;
+  mobileNumberVerified?: boolean;
+  email?: string;
+  emailVerified?: boolean;
+  age?: number;
+  gender?: string;
+  profilePicture?: string;
+  authMethod: 'mobile' | 'google';
 }
 
 interface AuthContextType {
@@ -36,8 +41,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem("userData");
-    setUserState(null);
+    try {
+      // If user was authenticated with Google, sign out from Google too
+      if (userState?.authMethod === 'google') {
+        await signOutGoogle();
+      }
+      
+      // Clear local storage
+      await AsyncStorage.removeItem("userData");
+      setUserState(null);
+      
+      console.log('✅ Logout successful');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Still clear local data even if Google logout fails
+      await AsyncStorage.removeItem("userData");
+      setUserState(null);
+    }
   };
 
   const loadUser = async () => {

@@ -1,4 +1,4 @@
-import { showToast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { createUser, STORAGE_KEYS } from "@/services/auth";
 import { CharactersImages } from "@/static/characters";
@@ -13,8 +13,10 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View 
 export default function BasicDetails() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState("");
+  const [email, setEmail] = useState("");
   const [gender, setGender] = useState<"Male" | "Female" | null>("Male");
   const [age, setAge] = useState(20);
   const [mobileNumber, setMobileNumber] = useState("");
@@ -59,14 +61,29 @@ export default function BasicDetails() {
       return;
     }
 
+    if (!email.trim()) {
+      showToast("error", "Error", "Please enter your email address.");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showToast("error", "Error", "Please enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await createUser({
         userName: userName.trim(),
         mobileNumber,
         mobileNumberVerified: true,
+        email: email.trim(),
+        emailVerified: true,
         age,
         gender: gender || "Male",
+        authMethod: 'mobile',
       });
 
       console.log("User Created", response);
@@ -78,8 +95,11 @@ export default function BasicDetails() {
           userName: response.data.userName,
           mobileNumber: response.data.mobileNumber,
           mobileNumberVerified: response.data.mobileNumberVerified,
+          email: response.data.email,
+          emailVerified: response.data.emailVerified,
           age: response.data.age,
           gender: response.data.gender,
+          authMethod: 'mobile',
         });
 
         showToast("success", "Account Created", "Your profile has been created successfully!");
@@ -139,6 +159,24 @@ export default function BasicDetails() {
         </View>
       </View>
 
+      {/* Enter Your Email */}
+      <View className="my-10">
+        <Text className="text-3xl text-white font-semibold font-sans my-4">What's your Email?</Text>
+        <View style={styles.inputContainer} className="flex-row items-center">
+          <TextInput
+            placeholder="Enter your email"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            maxLength={100}
+            value={email}
+            onChangeText={setEmail}
+            className="flex-1 text-lg py-3 text-white focus:border-b-2 border-blue-600"
+            editable={!loading}
+          />
+        </View>
+      </View>
+
       <Text className="text-3xl text-white font-sans font-semibold mb-10">
         Choose your Gender
       </Text>
@@ -189,10 +227,10 @@ export default function BasicDetails() {
       />
 
       <TouchableOpacity
-        disabled={userName.trim() === '' || loading || !mobileNumber}
+        disabled={userName.trim() === '' || email.trim() === '' || loading || !mobileNumber}
         onPress={handleContinue}
         className={`mt-5 absolute w-[80vw] bottom-10 left-[10%] rounded-full overflow-hidden ${
-          (userName.trim() === '' || loading || !mobileNumber) ? 'opacity-50' : ''
+          (userName.trim() === '' || email.trim() === '' || loading || !mobileNumber) ? 'opacity-50' : ''
         }`}
       >
         <LinearGradient

@@ -1,5 +1,6 @@
 import { API_URL } from "@/config/apiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 export interface SendOtpPayload {
   mobileNumber: string;
@@ -29,19 +30,34 @@ export interface LoginResponse {
   data: {
     userId: string;
     userName: string;
-    mobileNumber: string;
-    mobileNumberVerified: boolean;
-    age: number;
-    gender: string;
+    mobileNumber?: string;
+    mobileNumberVerified?: boolean;
+    email?: string;
+    emailVerified?: boolean;
+    age?: number;
+    gender?: string;
   };
 }
 
 export interface RegisterPayload {
   userName: string;
-  mobileNumber: string;
-  mobileNumberVerified: boolean;
-  age: number;
-  gender: "Male" | "Female";
+  mobileNumber?: string;
+  mobileNumberVerified?: boolean;
+  email?: string;
+  emailVerified?: boolean;
+  age?: number;
+  gender?: "Male" | "Female";
+  profilePicture?: string;
+  authMethod?: 'mobile' | 'google';
+}
+
+export interface GoogleUserInfo {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  given_name?: string;
+  family_name?: string;
 }
 
 export interface RegisterResponse {
@@ -51,10 +67,12 @@ export interface RegisterResponse {
   data: {
     userId: string;
     userName: string;
-    mobileNumber: string;
-    mobileNumberVerified: boolean;
-    age: number;
-    gender: string;
+    mobileNumber?: string;
+    mobileNumberVerified?: boolean;
+    email?: string;
+    emailVerified?: boolean;
+    age?: number;
+    gender?: string;
   };
 }
 
@@ -74,7 +92,7 @@ export const storeAuthData = async (loginResponse: LoginResponse) => {
       [STORAGE_KEYS.AUTH_TOKEN, loginResponse.token],
       [STORAGE_KEYS.USER_ID, loginResponse.data.userId],
       [STORAGE_KEYS.USER_DATA, JSON.stringify(loginResponse.data)],
-      [STORAGE_KEYS.MOBILE_NUMBER, loginResponse.data.mobileNumber]
+      [STORAGE_KEYS.MOBILE_NUMBER, loginResponse.data.mobileNumber || '']
     ]);
     console.log('Auth data stored successfully');
   } catch (error) {
@@ -93,10 +111,10 @@ export const getStoredAuthData = async () => {
     ]);
     
     const authData = {
-      token: values[0][1],
-      userId: values[1][1],
+      token: values[0][1] || '',
+      userId: values[1][1] || '',
       userData: values[2][1] ? JSON.parse(values[2][1]) : null,
-      mobileNumber: values[3][1]
+      mobileNumber: values[3][1] || ''
     };
     
     return authData;
@@ -179,14 +197,22 @@ export const verifyOtp = async (otp: string): Promise<VerifyOtpResponse> => {
 };
 
 // Login User (Check if user exists)
-export const loginUser = async (mobileNumber: string): Promise<LoginResponse> => {
+export const loginUser = async (mobileNumber?: string, email?: string): Promise<LoginResponse> => {
   try {
+    const payload: any = {};
+    if (mobileNumber) {
+      payload.mobileNumber = mobileNumber;
+    }
+    if (email) {
+      payload.email = email;
+    }
+
     const response = await fetch(`${API_URL}/user/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ mobileNumber }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -235,5 +261,123 @@ export const createUser = async (payload: RegisterPayload): Promise<RegisterResp
   } catch (error: any) {
     console.error("Registration error:", error);
     throw new Error(error.message || "Something went wrong");
+  }
+};
+
+// Configure Google Sign-In
+export const configureGoogleSignIn = () => {
+  console.log('🔧 Configuring Google Sign-In...');
+  
+  // Use minimal configuration - let google-services.json handle the rest
+  const config = {
+    offlineAccess: false,
+    hostedDomain: '',
+    forceCodeForRefreshToken: false,
+  };
+  
+  console.log('🔧 Google Sign-In Configuration (using google-services.json):', {
+    offlineAccess: config.offlineAccess,
+    hostedDomain: config.hostedDomain,
+    forceCodeForRefreshToken: config.forceCodeForRefreshToken,
+    note: 'Web client ID will be read from google-services.json'
+  });
+  
+  try {
+    GoogleSignin.configure(config);
+    console.log('✅ Google Sign-In configuration completed');
+  } catch (error) {
+    console.error('❌ Error configuring Google Sign-In:', error);
+  }
+};
+
+// Google Sign-In
+export const signInWithGoogle = async (): Promise<GoogleUserInfo> => {
+  try {
+    console.log('🔍 Starting Google Sign-In process...');
+    
+    // Check if Google Play Services is available
+    console.log('🔍 Checking Google Play Services...');
+    await GoogleSignin.hasPlayServices();
+    console.log('✅ Google Play Services is available');
+    
+    // Attempt to sign in with account selection
+    console.log('🔍 Attempting Google Sign-In...');
+    
+    // Sign out first to force account selection
+    try {
+      await GoogleSignin.signOut();
+      console.log('🔍 Signed out from previous Google account');
+    } catch (e) {
+      console.log('ℹ️ No previous Google account to sign out');
+    }
+    
+    const userInfo = await GoogleSignin.signIn();
+    console.log('📱 Google Sign-In response:', JSON.stringify(userInfo, null, 2));
+    
+    if (userInfo.type === 'success' && userInfo.data) {
+      const user = userInfo.data.user;
+      console.log('✅ Google Sign-In successful, user data:', user);
+      
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name || '',
+        picture: user.photo || undefined,
+        given_name: user.givenName || undefined,
+        family_name: user.familyName || undefined,
+      };
+    } else {
+      console.error('❌ Google Sign-In failed - invalid response type or data');
+      throw new Error('Google sign in failed - invalid response');
+    }
+  } catch (error: any) {
+    console.error('❌ Google Sign-In Error Details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      fullError: error
+    });
+    
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      console.log('ℹ️ User cancelled Google Sign-In');
+      throw new Error('Sign in was cancelled');
+    } else if (error.code === statusCodes.IN_PROGRESS) {
+      console.log('⚠️ Google Sign-In already in progress');
+      throw new Error('Sign in is already in progress');
+    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      console.log('❌ Google Play Services not available');
+      throw new Error('Play services not available');
+    } else if (error.code === 'DEVELOPER_ERROR') {
+      console.log('❌ Developer Error - Configuration issue');
+      throw new Error('DEVELOPER_ERROR: Google Sign-In configuration is invalid');
+    } else {
+      console.log('❌ Unknown Google Sign-In error');
+      throw new Error(`Google sign in failed: ${error.message || 'Unknown error'}`);
+    }
+  }
+};
+
+// Google Sign-Out
+export const signOutGoogle = async () => {
+  try {
+    console.log('🔍 Signing out from Google...');
+    
+    // Check if user is signed in
+    const isSignedIn = await GoogleSignin.isSignedIn();
+    console.log('🔍 Google Sign-In status:', isSignedIn);
+    
+    if (isSignedIn) {
+      await GoogleSignin.signOut();
+      console.log('✅ Google Sign-Out successful');
+    } else {
+      console.log('ℹ️ User was not signed in to Google');
+    }
+    
+    // Clear any cached tokens
+    await GoogleSignin.revokeAccess();
+    console.log('✅ Google access revoked');
+    
+  } catch (error) {
+    console.error('❌ Google Sign-Out Error:', error);
   }
 };

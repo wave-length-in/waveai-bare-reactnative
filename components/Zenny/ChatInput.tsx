@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import VoiceRecorder from './VoiceRecorder';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -15,6 +16,8 @@ interface ChatInputProps {
   onImagePreview: (file: ImagePicker.ImagePickerAsset, text?: string) => number;
   onImageUpload?: (imageUrl: string, messageId: number) => void;
   onImageUploadError?: (messageId: number) => void;
+  onVoiceRecordingComplete?: (audioUri: string, messageId: number) => void;
+  onVoiceRecordingError?: (messageId: number) => void;
   inputValue: string;
 }
 
@@ -24,9 +27,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onImagePreview,
   onImageUpload,
   onImageUploadError,
+  onVoiceRecordingComplete,
+  onVoiceRecordingError,
   inputValue,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   const handleInputChange = useCallback(
     (text: string) => {
@@ -79,7 +85,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleImageSelect = useCallback(async () => {
-    if (isUploading) return;
+    if (isUploading || isRecording) return;
 
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -118,38 +124,81 @@ const ChatInput: React.FC<ChatInputProps> = ({
       Alert.alert('Error', 'Failed to select image');
       setIsUploading(false);
     }
-  }, [isUploading, inputValue, onImagePreview, onImageUpload, onImageUploadError]);
+  }, [isUploading, isRecording, inputValue, onImagePreview, onImageUpload, onImageUploadError]);
 
-  const canSend = inputValue.trim().length > 0 && !isUploading;
+  const handleVoiceRecordingComplete = useCallback((audioUri: string) => {
+    console.log('🎤 Voice recording completed:', audioUri);
+    
+    // Create a temporary message ID for the voice message
+    const messageId = Date.now();
+    
+    if (onVoiceRecordingComplete) {
+      onVoiceRecordingComplete(audioUri, messageId);
+    }
+    
+    setIsRecording(false);
+  }, [onVoiceRecordingComplete]);
+
+  const handleVoiceRecordingCancel = useCallback(() => {
+    setIsRecording(false);
+  }, []);
+
+  const startVoiceRecording = useCallback(() => {
+    setIsRecording(true);
+  }, []);
+
+  const canSend = inputValue.trim().length > 0 && !isUploading && !isRecording;
 
   return (
     <View className="px-4 pb-4 pt-2">
-      <View className="relative flex-row items-end rounded-2xl border border-white/20 bg-white/5 p-2">
-        <TextInput
-          className="flex-1 text-white text-base px-2"
-          value={inputValue}
-          onChangeText={handleInputChange}
-          placeholder="Type a message..."
-          placeholderTextColor="rgba(255,255,255,0.5)"
-          multiline
+      {isRecording ? (
+        <VoiceRecorder
+          onRecordingComplete={handleVoiceRecordingComplete}
+          onCancel={handleVoiceRecordingCancel}
         />
-
-        <TouchableOpacity className="p-2" onPress={handleImageSelect} disabled={isUploading}>
-          <Ionicons
-            name="image-outline"
-            size={22}
-            color={isUploading ? '#999' : '#fff'}
+      ) : (
+        <View className="relative flex-row items-end rounded-2xl border border-white/20 bg-white/5 p-2">
+          <TextInput
+            className="flex-1 text-white text-base px-2"
+            value={inputValue}
+            onChangeText={handleInputChange}
+            placeholder="Type a message..."
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            multiline
           />
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          className={`p-2 ${!canSend ? 'opacity-50' : ''}`}
-          onPress={handleSubmit}
-          disabled={!canSend}
-        >
-          <Ionicons name="send" size={22} color={canSend ? '#fff' : '#999'} />
-        </TouchableOpacity>
-      </View>
+          {/* Microphone Button */}
+          <TouchableOpacity 
+            className="p-2" 
+            onPress={startVoiceRecording} 
+            disabled={isUploading}
+          >
+            <Ionicons
+              name="mic"
+              size={22}
+              color={isUploading ? '#999' : '#fff'}
+            />
+          </TouchableOpacity>
+
+          {/* Image Button */}
+          <TouchableOpacity className="p-2" onPress={handleImageSelect} disabled={isUploading}>
+            <Ionicons
+              name="image-outline"
+              size={22}
+              color={isUploading ? '#999' : '#fff'}
+            />
+          </TouchableOpacity>
+
+          {/* Send Button */}
+          <TouchableOpacity
+            className={`p-2 ${!canSend ? 'opacity-50' : ''}`}
+            onPress={handleSubmit}
+            disabled={!canSend}
+          >
+            <Ionicons name="send" size={22} color={canSend ? '#fff' : '#999'} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

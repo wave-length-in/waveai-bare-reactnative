@@ -10,6 +10,7 @@ import {
 
 // Import components
 import { default as AiReplyAnimation } from '@/components/Zenny/AiLoader';
+import AudioMessage from '@/components/Zenny/AudioMessage';
 import ImageMessage from '@/components/Zenny/ImageMessage';
 import { cleanHtml } from '@/utils/cleanHtml';
 import { formatTimestamp, getDateLabel, shouldShowTimestamp } from '@/utils/formatDatetime';
@@ -132,6 +133,12 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
 
           // Check for image messages - both preview and uploaded
           const isImageMessage = !!(message.imageFile || message.image_url);
+          
+          // Check for audio messages - both local file and uploaded URL
+          const isAudioMessage = !!(message.audioFile || message.audio_url || message.audioUrl);
+          
+          // Check for TTS audio messages for AI responses
+          const isTTSAudioMessage = message.type === 'ai' && !!(message.ttsAudioUrl);
 
           return (
             <React.Fragment key={message.id}>
@@ -158,8 +165,8 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                 )}
 
                 <View className={`${message.type === "user"
-                  ? "max-w-[70%]"
-                  : "max-w-[85%] text-white"
+                  ? "max-w-[70%] items-end"
+                  : "max-w-[85%] text-white items-start"
                   }`}>
                   {message.type === "ai" && message.isTyping ? (
                     <AiReplyAnimation
@@ -171,40 +178,57 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                     <>
                       {message.type === "ai" ? (
                         <View className="space-y-2">
-                          {splitSentencesToLines(message.content || "").map((line, idx) => {
-                            // If line is a link object
-                            if (typeof line === "object" && line.type === "link") {
-                              return (
-                                <View key={idx} className="rounded-2xl w-fit text-md md:text-lg">
-                                  <LinkPreviewComponent url={line.url} />
+                          {/* TTS Audio Message for AI - Show only audio when available */}
+                          {isTTSAudioMessage ? (
+                            <AudioMessage message={{...message, audio_url: message.ttsAudioUrl}} isUser={false} />
+                          ) : (
+                            <>
+                              {/* TTS Processing Indicator */}
+                              {message.ttsProcessing && (
+                                <View className="rounded-2xl bg-white/10 border border-white/10 px-4 py-2">
+                                  <Text className="text-white text-sm">🎤 Generating voice...</Text>
                                 </View>
-                              );
-                            }
+                              )}
+                              
+                              {/* Text Content - Only show if no TTS audio */}
+                              {splitSentencesToLines(message.content || "").map((line, idx) => {
+                                // If line is a link object
+                                if (typeof line === "object" && line.type === "link") {
+                                  return (
+                                    <View key={idx} className="rounded-2xl w-fit text-md md:text-lg">
+                                      <LinkPreviewComponent url={line.url} />
+                                    </View>
+                                  );
+                                }
 
-                            // Check inline URLs
-                            const hasInlineUrl = /https?:\/\/[^\s<>"'{}|\\^`\[\]]+/gi.test(
-                              line as string
-                            );
+                                // Check inline URLs
+                                const hasInlineUrl = /https?:\/\/[^\s<>"'{}|\\^`\[\]]+/gi.test(
+                                  line as string
+                                );
 
-                            return (
-                              <View
-                                key={idx}
-                                className="rounded-2xl self-start mt-2 rounded-b-2xl bg-white/10 border border-white/10 px-4 py-2"
-                              >
-                                {hasInlineUrl ? (
-                                  <TextWithLinks content={line as string} />
-                                ) : (
-                                  <Text className="text-white text-base">
-                                    {cleanHtml(line as string)}
-                                  </Text>
-                                )}
-                              </View>
-                            );
-                          })}
+                                return (
+                                  <View
+                                    key={idx}
+                                    className="rounded-2xl self-start mt-2 rounded-b-2xl bg-white/10 border border-white/10 px-4 py-2"
+                                  >
+                                    {hasInlineUrl ? (
+                                      <TextWithLinks content={line as string} />
+                                    ) : (
+                                      <Text className="text-white text-base">
+                                        {cleanHtml(line as string)}
+                                      </Text>
+                                    )}
+                                  </View>
+                                );
+                              })}
+                            </>
+                          )}
                         </View>
                       ) : (
                         <>
-                          {isImageMessage && message.image_url ? (
+                          {isAudioMessage ? (
+                            <AudioMessage message={message} isUser={true} />
+                          ) : isImageMessage && message.image_url ? (
                             <ImageMessage message={message} />
                           ) : message.content ? (
                             <View className="rounded-t-2xl rounded-bl-2xl bg-[#19A4EA] px-4 py-2">

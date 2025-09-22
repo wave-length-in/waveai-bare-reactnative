@@ -69,7 +69,9 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
           transition={{ type: "timing", duration: 500 }}
           className="self-start rounded-2xl bg-white/10 border border-white/10 px-3 py-2 mb-1"
         >
-          <Text className="text-base text-white">{line}</Text>
+          <Text className="text-base text-white">
+            {typeof line === 'string' ? line : line.url}
+          </Text>
         </MotiView>
       ))}
 

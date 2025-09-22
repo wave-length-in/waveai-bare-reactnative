@@ -8,11 +8,14 @@ import {
     Platform,
     SafeAreaView,
     StyleSheet,
+    Text,
     View
 } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 
 import { getStoredAuthData } from '@/services/auth';
+import { convertSpeechToText } from '@/services/speechToText';
+import { convertTextToSpeech } from '@/services/textToSpeech';
 import ChatHeader from './ChatHeader';
 import ChatInput from './ChatInput';
 import { ChatSection } from './ChatSection';
@@ -51,6 +54,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const deliveryTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
     const [isUploading, setIsUploading] = useState(false);
+    const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+    const [isProcessingTTS, setIsProcessingTTS] = useState(false);
 
     // Memoize character config to prevent recreation
     const characterConfig = useMemo(() => ({
@@ -106,7 +111,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     }, []);
 
     // Debounced AI trigger function - Updated to handle both text and images
-    const triggerAiReplyWithDebounce = useCallback(() => {
+    const triggerAiReplyWithDebounce = useCallback((messageType: 'text' | 'audio' = 'text') => {
         // Clear any existing timer
         if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
@@ -158,6 +163,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     userId: userId,
                     characterId: characterConfig.characterId,
                     characterName: characterConfig.characterName,
+                    type: messageType, // Use the passed message type
                 };
 
                 // Add message if we have text content
@@ -202,16 +208,34 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         });
 
         newSocket.on('receive_chat_history', (data) => {
-            const fetchedMessages: Message[] = data.messages.map((msg: any, index: number) => ({
-                id: index + 1,
-                type: msg.sender as 'user' | 'ai',
-                content: msg.message,
-                isTyping: false,
-                timestamp: msg.timestamp,
-                image_url: msg.image_url,
-                delivered: msg.sender === "user" ? true : undefined,
-                deliveryStatus: msg.sender === "user" ? ('delivered' as const) : undefined
-            }));
+            console.log('📜 Chat history received:', data.messages, 'messages');
+            
+            const fetchedMessages: Message[] = data.messages.map((msg: any, index: number) => {
+                // Log TTS audio data for debugging
+                if (msg.sender === 'ai' && msg.audio_url) {
+                    console.log('🔊 Found TTS audio in chat history:', {
+                        messageId: index + 1,
+                        audioUrl: msg.audio_url,
+                        content: msg.message?.substring(0, 50) + '...'
+                    });
+                }
+                
+                return {
+                    id: index + 1,
+                    type: msg.sender as 'user' | 'ai',
+                    content: msg.message,
+                    isTyping: false,
+                    timestamp: msg.timestamp,
+                    image_url: msg.image_url,
+                    audio_url: msg.audio_url,
+                    audioDuration: msg.audio_duration,
+                    ttsAudioUrl: msg.sender === 'ai' ? msg.audio_url : undefined, // For AI messages, audio_url is TTS
+                    ttsProcessing: false, // Set to false for fetched messages
+                    delivered: msg.sender === "user" ? true : undefined,
+                    deliveryStatus: msg.sender === "user" ? ('delivered' as const) : undefined
+                };
+            });
+            
             setMessages(fetchedMessages);
             // Hide skeleton after messages are loaded
             setIsLoadingHistory(false);
@@ -250,12 +274,16 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         content: data.message,
                         isTyping: true,
                         timestamp: data.timestamp,
-                        isFromServer: true
+                        isFromServer: true,
+                        ttsProcessing: true, // Mark for TTS processing
                     },
                 ];
             });
 
             setLoading(false);
+            
+            // Generate TTS for the AI response and wait for completion
+            generateTTSForMessage(data.message);
         });
 
         newSocket.on('connect_error', (error) => {
@@ -337,7 +365,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         // Start AI processing
         isUserActivelyTypingRef.current = false;
-        triggerAiReplyWithDebounce();
+        triggerAiReplyWithDebounce('text');
     }, [socket, userId, characterConfig, triggerAiReplyWithDebounce]);
 
     const handleImageUploadError = useCallback((messageId: number) => {
@@ -351,6 +379,103 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Remove the failed upload message
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
         setIsUploading(false);
+    }, []);
+
+    const handleVoiceRecordingComplete = useCallback(async (audioUri: string, messageId: number) => {
+        if (!socket || !userId) return;
+
+        console.log('🎤 Voice recording completed, processing...', { audioUri, messageId });
+
+        // Create a preview message for the voice note
+        const voiceMessage: Message = {
+            id: messageId,
+            type: 'user',
+            content: '',
+            timestamp: generateISTTimestamp(),
+            isFromServer: false,
+            audioFile: audioUri,
+            isAudioUploading: true,
+            delivered: false,
+            deliveryStatus: 'pending' as const
+        };
+
+        setMessages((prev) => [...prev, voiceMessage]);
+        setDeliveryStatusWithTimeout(messageId);
+        setIsProcessingVoice(true);
+
+        try {
+            // Convert speech to text using your API
+            const speechResult = await convertSpeechToText({
+                audioUri,
+                userId,
+                characterId: characterConfig.characterId,
+            });
+
+            console.log('🎤 Speech-to-text result:', speechResult);
+
+            // Update the message with the transcribed text and audio URL
+            setMessages((prev) => 
+                prev.map(msg => 
+                    msg.id === messageId 
+                        ? {
+                            ...msg,
+                            content: speechResult.DisplayText,
+                            audio_url: speechResult.file_url,
+                            audioDuration: speechResult.Duration,
+                            isAudioUploading: false,
+                            audioFile: undefined,
+                        }
+                        : msg
+                )
+            );
+
+        // Send message to backend
+        socket.emit('send_message', {
+            userId: userId,
+            characterId: characterConfig.characterId,
+            characterName: characterConfig.characterName,
+            message: speechResult.DisplayText,
+            audio_url: speechResult.file_url,
+            type: 'audio',
+        });
+
+            // Add to pending messages for AI processing
+            pendingMessagesRef.current.push(speechResult.DisplayText);
+
+            // Mark user as not actively typing and trigger AI with audio type
+            isUserActivelyTypingRef.current = false;
+            triggerAiReplyWithDebounce('audio');
+
+        } catch (error) {
+            console.error('❌ Voice processing failed:', error);
+            
+            // Remove the failed voice message
+            setMessages((prev) => prev.filter(msg => msg.id !== messageId));
+            
+            // Clear any timeouts for this message
+            const existingTimeout = deliveryTimeoutsRef.current.get(messageId);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
+                deliveryTimeoutsRef.current.delete(messageId);
+            }
+        } finally {
+            setIsProcessingVoice(false);
+        }
+    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
+
+    const handleVoiceRecordingError = useCallback((messageId: number) => {
+        console.error('❌ Voice recording error for message:', messageId);
+        
+        // Clear any timeouts for this message
+        const existingTimeout = deliveryTimeoutsRef.current.get(messageId);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+            deliveryTimeoutsRef.current.delete(messageId);
+        }
+
+        // Remove the failed voice message
+        setMessages((prev) => prev.filter(msg => msg.id !== messageId));
+        setIsProcessingVoice(false);
     }, []);
 
     const handleSendMessage = useCallback((content: string) => {
@@ -378,6 +503,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             characterId: characterConfig.characterId,
             characterName: characterConfig.characterName,
             message: content,
+            type: 'text',
         });
 
         // Add to pending messages for AI processing
@@ -387,7 +513,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         isUserActivelyTypingRef.current = false;
 
         // Start/restart the debounce timer immediately
-        triggerAiReplyWithDebounce();
+        triggerAiReplyWithDebounce('text');
     }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
 
     const handleInputChange = useCallback((text: string) => {
@@ -416,11 +542,101 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
                 // If we have pending content (messages or image) and user stopped typing, restart timer
                 if (pendingMessagesRef.current.length > 0 || pendingImageRef.current) {
-                    triggerAiReplyWithDebounce();
+                    triggerAiReplyWithDebounce('text');
                 }
             }, 500);
         }
     }, [triggerAiReplyWithDebounce]);
+
+    const cleanTextForTTS = (text: string): string => {
+        // Remove emojis and special characters, keep only text
+        return text
+            .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Remove emoji ranges
+            .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Remove misc symbols
+            .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Remove transport symbols
+            .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Remove flags
+            .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Remove misc symbols
+            .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Remove dingbats
+            .replace(/[^\w\s.,!?]/g, '')           // Remove remaining special chars
+            .replace(/\s+/g, ' ')                  // Normalize whitespace
+            .trim();
+    };
+
+    const generateTTSForMessage = useCallback(async (text: string) => {
+        if (!userId) return;
+        
+        try {
+            setIsProcessingTTS(true);
+            
+            // Clean text for TTS (remove emojis and special characters)
+            const cleanedText = cleanTextForTTS(text);
+            
+            if (!cleanedText.trim()) {
+                console.log('⚠️ No text content after cleaning, skipping TTS');
+                // Just remove TTS processing flag
+                setMessages((prev) => 
+                    prev.map((msg, index) => {
+                        if (msg.type === 'ai' && index === prev.length - 1 && msg.ttsProcessing) {
+                            return {
+                                ...msg,
+                                ttsProcessing: false,
+                            };
+                        }
+                        return msg;
+                    })
+                );
+                return;
+            }
+            
+            console.log('🔊 Generating TTS for AI message...', { 
+                originalText: text.substring(0, 50) + '...',
+                cleanedText: cleanedText.substring(0, 50) + '...'
+            });
+            
+            const ttsResult = await convertTextToSpeech({
+                userId,
+                characterId: characterConfig.characterId,
+                text: cleanedText,
+                voiceName: 'en-IN-NeerjaNeural',
+                language: 'en-IN',
+            });
+            
+            console.log('✅ TTS generation successful:', { audioUrl: ttsResult.audio_url });
+            
+            // Update the latest AI message with TTS audio URL
+            setMessages((prev) => 
+                prev.map((msg, index) => {
+                    // Find the latest AI message that has TTS processing
+                    if (msg.type === 'ai' && index === prev.length - 1 && msg.ttsProcessing) {
+                        return {
+                            ...msg,
+                            ttsAudioUrl: ttsResult.audio_url,
+                            ttsProcessing: false,
+                        };
+                    }
+                    return msg;
+                })
+            );
+            
+        } catch (error) {
+            console.error('❌ TTS generation failed:', error);
+            
+            // Remove TTS processing flag on error
+            setMessages((prev) => 
+                prev.map((msg, index) => {
+                    if (msg.type === 'ai' && index === prev.length - 1 && msg.ttsProcessing) {
+                        return {
+                            ...msg,
+                            ttsProcessing: false,
+                        };
+                    }
+                    return msg;
+                })
+            );
+        } finally {
+            setIsProcessingTTS(false);
+        }
+    }, [userId, characterConfig.characterId]);
 
     const handleTypingComplete = useCallback((messageId: number) => {
         setMessages((prev) =>
@@ -446,10 +662,15 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     style={styles.cosmicOverlay}
                 />
 
-                {/* Absolute loading spinner for image uploads */}
-                {isUploading && (
+                {/* Absolute loading spinner for image uploads, voice processing, and TTS */}
+                {(isUploading || isProcessingVoice || isProcessingTTS) && (
                     <View style={styles.loaderOverlay}>
                         <ActivityIndicator size="large" color="#FFF" />
+                        <Text className="text-white text-lg mt-4">
+                            {isProcessingVoice ? 'Processing voice...' : 
+                             isProcessingTTS ? 'Generating AI voice...' : 
+                             'Uploading...'}
+                        </Text>
                     </View>
                 )}
 
@@ -477,6 +698,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         onImagePreview={handleImagePreview}
                         onImageUpload={handleImageUpload}
                         onImageUploadError={handleImageUploadError}
+                        onVoiceRecordingComplete={handleVoiceRecordingComplete}
+                        onVoiceRecordingError={handleVoiceRecordingError}
                         inputValue={inputValue}
                     />
                 </KeyboardAvoidingView>

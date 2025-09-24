@@ -80,6 +80,19 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         getUserId();
     }, []);
 
+    const refetchChatHistory = useCallback(() => {
+        try {
+            if (!socket || !userId) return;
+            setIsLoadingHistory(true);
+            socket.emit('fetch_chat_history', {
+                userId: userId,
+                characterId: characterConfig.characterId,
+            });
+        } catch (e) {
+            console.log('[chat] Refetch history error:', e);
+        }
+    }, [socket, userId, characterConfig]);
+
     // Cleanup delivery timeouts on unmount
     useEffect(() => {
         return () => {
@@ -683,6 +696,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         name={characterName}
                         username={`${characterName.toLowerCase()}_`}
                         image={characterImage}
+                        onClearChatSuccess={refetchChatHistory}
                     />
 
                     <ChatSection

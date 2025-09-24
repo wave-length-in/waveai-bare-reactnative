@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   name: string;
   username?: string;
   image?: string;
+  onClearChatSuccess?: () => void;
 }
 
 const STORAGE_KEYS = {
@@ -23,7 +24,7 @@ const STORAGE_KEYS = {
   MOBILE_NUMBER: 'mobile_number',
 };
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image, onClearChatSuccess }) => {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -127,6 +128,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
                 }
                 console.log('[chat] Clear chat success:', body);
                 Alert.alert('Clear Chat', 'Recent chats cleared.');
+                try {
+                  onClearChatSuccess?.();
+                } catch {}
               } catch (err: any) {
                 console.log('[chat] Clear chat error:', err);
                 Alert.alert('Clear Chat', err?.message || 'Network error');

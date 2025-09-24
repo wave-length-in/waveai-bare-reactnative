@@ -12,6 +12,9 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
+import com.facebook.FacebookSdk
+import com.facebook.appevents.AppEventsLogger
+import com.facebook.LoggingBehavior
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
@@ -48,6 +51,18 @@ class MainApplication : Application(), ReactApplication {
       load()
     }
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+
+    // Initialize Facebook SDK and App Events
+    FacebookSdk.setAutoInitEnabled(true)
+    FacebookSdk.setAutoLogAppEventsEnabled(true)
+    FacebookSdk.setAdvertiserIDCollectionEnabled(true)
+    FacebookSdk.fullyInitialize()
+    AppEventsLogger.activateApp(this)
+
+    if (BuildConfig.DEBUG) {
+      FacebookSdk.setIsDebugEnabled(true)
+      FacebookSdk.addLoggingBehavior(LoggingBehavior.APP_EVENTS)
+    }
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {

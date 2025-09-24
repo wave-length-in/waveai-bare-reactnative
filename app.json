@@ -4,7 +4,7 @@
     "slug": "wave-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app_icon2.png",
+    "icon": "./assets/images/app_new_icon.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -18,19 +18,20 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app_icon2.png",
+        "foregroundImage": "./assets/images/app_new_icon.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./android/app/google-services.json",
       "splash": {
         "image": "./assets/images/wave-new-logo2.png",
         "resizeMode": "contain",
         "backgroundColor": "#000000",
-        "mdpi": "./assets/images/app_icon2.png",
-        "hdpi": "./assets/images/app_icon2.png",
-        "xhdpi": "./assets/images/app_icon2.png",
-        "xxhdpi": "./assets/images/app_icon2.png",
-        "xxxhdpi": "./assets/images/app_icon2.png"
+        "mdpi": "./assets/images/app_new_icon.png",
+        "hdpi": "./assets/images/app_new_icon.png",
+        "xhdpi": "./assets/images/app_new_icon.png",
+        "xxhdpi": "./assets/images/app_new_icon.png",
+        "xxxhdpi": "./assets/images/app_new_icon.png"
       },
       "package": "com.wave.ai.waveapp"
     },
@@ -53,7 +54,16 @@
           }
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#000000",
+          "sounds": ["./assets/sound.wav"],
+          "mode": "production"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

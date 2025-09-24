@@ -39,6 +39,19 @@ export default function GoogleSignup() {
     loadGoogleUserData();
   }, [router]);
 
+  const getInitials = (fullName?: string, email?: string) => {
+    const source = (fullName || '').trim() || (email || '').trim();
+    if (!source) return '?';
+    if (!fullName && email) {
+      const namePart = email.split('@')[0];
+      const letters = namePart.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase();
+      return letters || namePart.slice(0, 2).toUpperCase();
+    }
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const handleContinue = async () => {
     if (!mobileNumber.trim()) {
       showToast("error", "Error", "Please enter your mobile number.");
@@ -131,14 +144,27 @@ export default function GoogleSignup() {
 
       {/* Google User Info */}
       <View className="items-center my-8">
-        <View className="w-24 h-24 rounded-full overflow-hidden bg-white/10 border-2 border-white/20 mb-4">
-          <Image
-            source={{ uri: googleUserData.picture }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+        <View className="w-24 h-24 rounded-full overflow-hidden bg-blue-500 border-2 border-white/20 mb-2 items-center justify-center">
+          {(() => {
+            const avatarUri = googleUserData.picture || googleUserData.photo || googleUserData.user?.photo || null;
+            if (avatarUri) {
+              return (
+                <Image
+                  source={{ uri: avatarUri }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              );
+            }
+            const initials = getInitials(googleUserData.name, googleUserData.email);
+            return (
+              <Text className="text-white text-3xl font-semibold">
+                {initials}
+              </Text>
+            );
+          })()}
         </View>
-        <Text className="text-white text-2xl font-semibold text-center mb-2">
+        <Text className="text-white text-2xl font-semibold text-center mb-1">
           {googleUserData.name}
         </Text>
         <Text className="text-gray-400 text-base text-center">
@@ -147,7 +173,7 @@ export default function GoogleSignup() {
       </View>
 
       {/* Mobile Number Input */}
-      <View className="my-6">
+      <View className="my-4">
         {/* <Text className="text-3xl text-white font-semibold font-sans my-4">
           Add your Mobile Number
         </Text> */}
@@ -171,7 +197,7 @@ export default function GoogleSignup() {
         Choose your Gender
       </Text>
       <View className="flex-row mb-8">
-        {["Male", "Female"].map((g) => {
+        {["Male", "Female","Other"].map((g) => {
           const isSelected = gender === g;
           return (
             <TouchableOpacity
@@ -183,7 +209,7 @@ export default function GoogleSignup() {
               disabled={loading}
             >
               <Text
-                className={`ml-2 text-2xl my-2 font-semibold ${
+                className={`ml-2 text-xl my-2 font-semibold ${
                   isSelected ? "text-[#0096FF]" : "text-white"
                 }`}
               >

@@ -3,13 +3,14 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getStoredAuthData } from '@/services/auth';
+import { addNotificationListeners, getFCMToken, sendTokenToBackend, setForegroundNotificationHandler } from '@/services/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import "../styles/global.css";
 
@@ -19,6 +20,34 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
+
+  useEffect(() => {
+    // Notifications setup once on app start
+    setForegroundNotificationHandler();
+    const unsubscribe = addNotificationListeners();
+    
+    // Get native FCM token and send to backend (only with valid userId)
+    getFCMToken().then(async (token) => {
+      if (!token) return;
+      console.log('[notifications] Native FCM Token obtained:', token);
+      try {
+        const auth = await getStoredAuthData();
+        const userId = auth?.userId?.trim();
+        const isValidObjectId = !!userId && /^[a-f0-9]{24}$/i.test(userId);
+        if (!isValidObjectId) {
+          console.log('[notifications] Skipping FCM registration: invalid or missing userId', { userId });
+          return;
+        }
+        await sendTokenToBackend(token, userId as string);
+      } catch (e) {
+        console.warn('Failed to register native FCM token with server', e);
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
 
   useEffect(() => {
     // Don't do anything until the navigation state is ready

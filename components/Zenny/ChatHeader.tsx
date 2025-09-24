@@ -1,3 +1,5 @@
+import { API_URL } from '@/config/apiUrl';
+import { getStoredAuthData as getStoredAuthDataGlobal } from '@/services/auth';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,6 +88,59 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
     router.push('/report');
   };
 
+  const handleClearChat = async () => {
+    try {
+      setShowMenu(false);
+      // Prefer global auth storage which uses correct keys
+      const globalAuth = await getStoredAuthDataGlobal();
+      const userIdCandidate = globalAuth?.userId || (await AsyncStorage.getItem(STORAGE_KEYS.USER_ID)) || '';
+      const userId = (userIdCandidate || '').trim();
+      const isValidObjectId = /^[a-f0-9]{24}$/i.test(userId);
+      if (!isValidObjectId) {
+        Alert.alert('Clear Chat', 'Cannot clear chat: invalid or missing user id.');
+        return;
+      }
+
+      const characterId = '688210873496b5e441480d22';
+      const count = 10000;
+
+      Alert.alert(
+        'Clear Chat',
+        'Are you sure you want to delete recent chats?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const url = `${API_URL}/chat/delete-recent-chats?userId=${encodeURIComponent(userId)}&characterId=${encodeURIComponent(characterId)}&count=${count}`;
+                console.log('🔍 URL:', url);
+                const res = await fetch(url, { method: 'DELETE' });
+                const text = await res.text();
+                let body: any = text;
+                try { body = JSON.parse(text); } catch {}
+                if (!res.ok) {
+                  console.log('[chat] Clear chat failed:', { status: res.status, body });
+                  Alert.alert('Clear Chat', body?.message || 'Failed to clear chat');
+                  return;
+                }
+                console.log('[chat] Clear chat success:', body);
+                Alert.alert('Clear Chat', 'Recent chats cleared.');
+              } catch (err: any) {
+                console.log('[chat] Clear chat error:', err);
+                Alert.alert('Clear Chat', err?.message || 'Network error');
+              }
+            }
+          }
+        ]
+      );
+    } catch (e) {
+      console.log('[chat] Clear chat init error:', e);
+      Alert.alert('Clear Chat', 'Something went wrong');
+    }
+  };
+
   const handleProfilePress = () => {
     console.log("Opening Zenny profile modal");
     setShowProfileModal(true);
@@ -96,6 +151,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image }) => {
   };
 
   const menuOptions = [
+    {
+      id: 'clear',
+      title: 'Clear Chat',
+      icon: 'trash-outline',
+      color: '#ef4444',
+      onPress: handleClearChat,
+    },
     {
       id: 'report',
       title: 'Report',

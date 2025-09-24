@@ -4,10 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiText, MotiView } from 'moti';
 import React, { useEffect } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppEventsLogger } from 'react-native-fbsdk-next';
 
 export default function OnboardingScreen() {
   const handleGetStarted = async () => {
     console.log('Pressing Button');
+    try {
+      AppEventsLogger.logEvent('LetsChatButtonPressed');
+    } catch (e) {
+      // ignore logging failures
+    }
     try {
       const authData = await getStoredAuthData();
       if (authData?.token && authData?.userId) {

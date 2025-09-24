@@ -208,7 +208,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         });
 
         newSocket.on('receive_chat_history', (data) => {
-            console.log('📜 Chat history received:', data.messages, 'messages');
+            console.log('📜 Chat history received:', data.messages.length, 'messages');
             
             const fetchedMessages: Message[] = data.messages.map((msg: any, index: number) => {
                 // Log TTS audio data for debugging

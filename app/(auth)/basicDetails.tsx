@@ -181,7 +181,7 @@ export default function BasicDetails() {
         Choose your Gender
       </Text>
       <View className="flex-row mb-8">
-        {["Male", "Female"].map((g) => {
+        {["Male", "Female","Other"].map((g) => {
           const isSelected = gender === g;
           return (
             <TouchableOpacity

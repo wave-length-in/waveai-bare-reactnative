@@ -1,4 +1,5 @@
 import { API_URL } from "@/config/apiUrl";
+import { getFCMToken, sendTokenToBackend } from '@/services/notifications';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
@@ -95,6 +96,25 @@ export const storeAuthData = async (loginResponse: LoginResponse) => {
       [STORAGE_KEYS.MOBILE_NUMBER, loginResponse.data.mobileNumber || '']
     ]);
     console.log('Auth data stored successfully');
+
+    // Attempt to register FCM token post-login if userId is valid
+    try {
+      const userId = loginResponse.data.userId?.trim();
+      const isValidObjectId = !!userId && /^[a-f0-9]{24}$/i.test(userId);
+      if (!isValidObjectId) {
+        console.log('[auth] Skipping FCM registration post-login: invalid userId', { userId });
+      } else {
+        const token = await getFCMToken();
+        if (token) {
+          console.log('[auth] Registering FCM token post-login');
+          await sendTokenToBackend(token, userId);
+        } else {
+          console.log('[auth] No FCM token available post-login; will register on next startup');
+        }
+      }
+    } catch (e) {
+      console.warn('[auth] Failed to register FCM token post-login', e);
+    }
   } catch (error) {
     console.error('Error storing auth data:', error);
     throw error;
@@ -362,11 +382,11 @@ export const signOutGoogle = async () => {
   try {
     console.log('🔍 Signing out from Google...');
     
-    // Check if user is signed in
-    const isSignedIn = await GoogleSignin.isSignedIn();
-    console.log('🔍 Google Sign-In status:', isSignedIn);
+    // Check if user has previous sign-in (API in v16)
+    const hasPrev = await GoogleSignin.hasPreviousSignIn();
+    console.log('🔍 Google previous sign-in status:', hasPrev);
     
-    if (isSignedIn) {
+    if (hasPrev) {
       await GoogleSignin.signOut();
       console.log('✅ Google Sign-Out successful');
     } else {

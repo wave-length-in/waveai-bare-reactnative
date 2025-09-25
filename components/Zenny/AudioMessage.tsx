@@ -190,18 +190,18 @@ const AudioMessage: React.FC<AudioMessageProps> = ({ message, isUser = false }) 
       <TouchableOpacity
         onPress={playPause}
         disabled={isLoading}
-        className={`flex-row items-center rounded-2xl px-4 py-3 ${
+        className={`flex-row w-full items-center rounded-2xl px-2 py-3 ${
           isUser 
-            ? 'bg-[#19A4EA] rounded-br-md' 
+            ? 'bg-[#19A4EA] rounded-br-md ' 
             : 'bg-white/10 border border-white/20 rounded-bl-md'
         }`}
-        style={{ 
+        style={{
           maxWidth: '80%',
-          minWidth: 200,
+          minWidth: 170,
         }}
       >
         {/* Play/Pause Button */}
-        <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+        <View className={`w-8 h-8 rounded-full items-center justify-center mr-1 ${
           isUser ? 'bg-white/20' : 'bg-white/10'
         }`}>
           {isLoading ? (
@@ -235,20 +235,7 @@ const AudioMessage: React.FC<AudioMessageProps> = ({ message, isUser = false }) 
           </View>
         )}
 
-        {/* Duration */}
-        <Text className="text-white text-xs font-medium">
-          {duration > 0 ? formatTime(duration) : '0:00'}
-        </Text>
       </TouchableOpacity>
-
-      {/* Audio Duration Display */}
-      {duration > 0 && (
-        <Text className={`text-white/70 text-xs mt-1 ${
-          isUser ? 'text-right' : 'text-left'
-        }`}>
-          {formatTime(duration)}
-        </Text>
-      )}
     </View>
   );
 };

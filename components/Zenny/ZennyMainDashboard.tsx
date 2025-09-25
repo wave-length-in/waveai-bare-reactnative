@@ -288,15 +288,32 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         isTyping: true,
                         timestamp: data.timestamp,
                         isFromServer: true,
-                        ttsProcessing: true, // Mark for TTS processing
+                        ttsProcessing: data.type === 'audio', // Only process TTS for audio flows
+                        messageType: data.type || 'text', // Store the message type
                     },
                 ];
             });
 
             setLoading(false);
             
-            // Generate TTS for the AI response and wait for completion
-            generateTTSForMessage(data.message);
+            // Do not generate TTS on the client. Backend emits receive_tts for audio flows only.
+        });
+
+        // Handle TTS audio for audio flows
+        newSocket.on('receive_tts', (data) => {
+            setMessages((prev) => {
+                return prev.map((msg) => {
+                    if (msg.type === 'ai' && msg.isTyping && msg.messageType === 'audio') {
+                        return {
+                            ...msg,
+                            ttsAudioUrl: data.audio_url,
+                            ttsProcessing: false,
+                            isTyping: false,
+                        };
+                    }
+                    return msg;
+                });
+            });
         });
 
         newSocket.on('connect_error', (error) => {
@@ -396,9 +413,9 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
     const handleVoiceRecordingComplete = useCallback(async (audioUri: string, messageId: number) => {
         if (!socket || !userId) return;
-
+    
         console.log('🎤 Voice recording completed, processing...', { audioUri, messageId });
-
+    
         // Create a preview message for the voice note
         const voiceMessage: Message = {
             id: messageId,
@@ -411,11 +428,11 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             delivered: false,
             deliveryStatus: 'pending' as const
         };
-
+    
         setMessages((prev) => [...prev, voiceMessage]);
         setDeliveryStatusWithTimeout(messageId);
         setIsProcessingVoice(true);
-
+    
         try {
             // Convert speech to text using your API
             const speechResult = await convertSpeechToText({
@@ -423,9 +440,9 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 userId,
                 characterId: characterConfig.characterId,
             });
-
+    
             console.log('🎤 Speech-to-text result:', speechResult);
-
+    
             // Update the message with the transcribed text and audio URL
             setMessages((prev) => 
                 prev.map(msg => 
@@ -441,24 +458,26 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                         : msg
                 )
             );
-
-        // Send message to backend
-        socket.emit('send_message', {
-            userId: userId,
-            characterId: characterConfig.characterId,
-            characterName: characterConfig.characterName,
-            message: speechResult.DisplayText,
-            audio_url: speechResult.file_url,
-            type: 'audio',
-        });
-
+    
+            // FIXED: Send message to backend with audio type
+            // The backend will save only audio_url to database
+            // and add transcribed text to memory only
+            socket.emit('send_message', {
+                userId: userId,
+                characterId: characterConfig.characterId,
+                characterName: characterConfig.characterName,
+                message: speechResult.DisplayText, // This is for memory and AI processing
+                audio_url: speechResult.file_url,  // This gets saved to database
+                type: 'audio',
+            });
+    
             // Add to pending messages for AI processing
             pendingMessagesRef.current.push(speechResult.DisplayText);
-
+    
             // Mark user as not actively typing and trigger AI with audio type
             isUserActivelyTypingRef.current = false;
             triggerAiReplyWithDebounce('audio');
-
+    
         } catch (error) {
             console.error('❌ Voice processing failed:', error);
             
@@ -680,7 +699,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     <View style={styles.loaderOverlay}>
                         <ActivityIndicator size="large" color="#FFF" />
                         <Text className="text-white text-lg mt-4">
-                            {isProcessingVoice ? 'Processing voice...' : 
+                            {isProcessingVoice ? 'Transcribing voice...' : 
                              isProcessingTTS ? 'Generating AI voice...' : 
                              'Uploading...'}
                         </Text>

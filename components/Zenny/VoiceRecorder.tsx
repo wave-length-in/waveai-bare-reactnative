@@ -23,7 +23,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     getPermission();

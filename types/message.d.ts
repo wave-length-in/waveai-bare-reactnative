@@ -25,6 +25,7 @@ interface Message {
   // TTS (Text-to-Speech) properties for AI messages
   ttsAudioUrl?: string;       // Generated TTS audio URL
   ttsProcessing?: boolean;    // Loading state for TTS generation
+  messageType?: 'text' | 'audio'; // Message type from backend
 
   deliveryStatus?: 'pending' | 'sent' | 'delivered';
 }

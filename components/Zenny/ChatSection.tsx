@@ -12,6 +12,7 @@ import {
 import { default as AiReplyAnimation } from '@/components/Zenny/AiLoader';
 import AudioMessage from '@/components/Zenny/AudioMessage';
 import ImageMessage from '@/components/Zenny/ImageMessage';
+import RecordingStatus from '@/components/Zenny/RecordingStatus';
 import { cleanHtml } from '@/utils/cleanHtml';
 import { formatTimestamp, getDateLabel, shouldShowTimestamp } from '@/utils/formatDatetime';
 import MessageTypeLoading from '@/utils/MessageLoading';
@@ -169,11 +170,16 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                   : "max-w-[85%] text-white items-start"
                   }`}>
                   {message.type === "ai" && message.isTyping ? (
-                    <AiReplyAnimation
-                      text={message.content}
-                      onComplete={() => onTypingComplete?.(message.id)}
-                      onLineAdded={scrollToBottom}
-                    />
+                    // Show different animation based on message type
+                    message.messageType === 'audio' ? (
+                      <RecordingStatus onComplete={() => onTypingComplete?.(message.id)} />
+                    ) : (
+                      <AiReplyAnimation
+                        text={message.content}
+                        onComplete={() => onTypingComplete?.(message.id)}
+                        onLineAdded={scrollToBottom}
+                      />
+                    )
                   ) : (
                     <>
                       {message.type === "ai" ? (
@@ -183,14 +189,14 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                             <AudioMessage message={{...message, audio_url: message.ttsAudioUrl}} isUser={false} />
                           ) : (
                             <>
-                              {/* TTS Processing Indicator */}
-                              {message.ttsProcessing && (
+                              {/* TTS Processing Indicator - Only for audio flows */}
+                              {message.ttsProcessing && message.messageType === 'audio' && (
                                 <View className="rounded-2xl bg-white/10 border border-white/10 px-4 py-2">
                                   <Text className="text-white text-sm">🎤 Generating voice...</Text>
                                 </View>
                               )}
                               
-                              {/* Text Content - Only show if no TTS audio */}
+                              {/* Text Content - Show for both text and audio flows */}
                               {splitSentencesToLines(message.content || "").map((line, idx) => {
                                 // If line is a link object
                                 if (typeof line === "object" && line.type === "link") {

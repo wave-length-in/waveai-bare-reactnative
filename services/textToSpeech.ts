@@ -12,6 +12,14 @@ export interface TextToSpeechResponse {
   voice_name: string;
 }
 
+// Utility function to remove all emojis
+const removeEmojis = (input: string): string => {
+  return input.replace(
+    /([\u2700-\u27BF]|[\uE000-\uF8FF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDDFF])/g,
+    ''
+  );
+};
+
 export interface TextToSpeechRequest {
   userId: string;
   characterId: string;
@@ -36,6 +44,9 @@ export const convertTextToSpeech = async ({
       language,
     });
 
+    const sanitizedText = removeEmojis(text);
+    console.log('🔊 Sanitized text:', sanitizedText);
+
     const response = await fetch(`${API_URL}/text-to-speech/`, {
       method: 'POST',
       headers: {
@@ -44,7 +55,7 @@ export const convertTextToSpeech = async ({
       body: JSON.stringify({
         user_id: userId,
         character_id: characterId,
-        text: text,
+        text: sanitizedText,
         voice_name: voiceName,
         language: language,
       }),

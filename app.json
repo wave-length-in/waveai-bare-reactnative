@@ -7,15 +7,7 @@
     "icon": "./assets/images/app_new_icon.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "UILaunchScreen": {
-          "UIImageName": "SplashScreen",
-          "UILaunchScreenMinimumSize": "{320, 568}"
-        }
-      }
-    },
+    "platforms": ["android", "web"],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app_new_icon.png",

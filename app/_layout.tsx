@@ -3,7 +3,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getStoredAuthData } from '@/services/auth';
-import { addNotificationListeners, getFCMToken, sendTokenToBackend, setForegroundNotificationHandler } from '@/services/notifications';
+import { addNotificationListeners, debugNotificationHandling, getFCMToken, sendTokenToBackend, setForegroundNotificationHandler, setupBackgroundMessageHandler, setupFCMListeners } from '@/services/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
@@ -24,7 +24,22 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Notifications setup once on app start
     setForegroundNotificationHandler();
-    const unsubscribe = addNotificationListeners();
+    const unsubscribe = addNotificationListeners(
+      undefined,
+      (response) => {
+        console.log('🔔 Notification response received:', response);
+        handleNotificationResponse(response);
+      }
+    );
+    
+    // Set up Firebase Cloud Messaging listeners
+    const unsubscribeFCM = setupFCMListeners();
+    
+    // Set up background message handler
+    setupBackgroundMessageHandler();
+    
+    // Set up debug listeners for notification handling
+    const debugCleanup = debugNotificationHandling();
     
     // Get native FCM token and send to backend (only with valid userId)
     getFCMToken().then(async (token) => {
@@ -46,14 +61,66 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
 
     return () => {
       unsubscribe?.();
+      unsubscribeFCM?.();
+      debugCleanup?.();
     };
   }, []);
+
+  const handleNotificationResponse = (response: any) => {
+    try {
+      console.log('🔔 Handling notification response:', response);
+      
+      const action = response.notification?.request?.content?.data?.action;
+      const type = response.notification?.request?.content?.data?.type;
+      
+      if (action === 'open_chat' || type === 'welcome') {
+        console.log('🔔 Navigating to chat screen from notification');
+        router.push('/(main)/chat/default');
+      } else {
+        console.log('🔔 No specific action, navigating to home from notification');
+        router.push('/(main)/home');
+      }
+    } catch (error) {
+      console.error('🔔 Error handling notification response:', error);
+    }
+  };
+
+  // Check for pending notification navigation
+  const checkPendingNotificationNavigation = async () => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const navigationData = await AsyncStorage.getItem('notification_navigation');
+      
+      if (navigationData) {
+        const { route, timestamp } = JSON.parse(navigationData);
+        
+        // Only process if it's recent (within last 30 seconds)
+        if (Date.now() - timestamp < 30000) {
+          console.log('🔔 Processing pending notification navigation:', route);
+          
+          // Clear the stored navigation
+          await AsyncStorage.removeItem('notification_navigation');
+          
+          // Navigate to the route
+          router.push(route);
+        } else {
+          // Clean up old navigation data
+          await AsyncStorage.removeItem('notification_navigation');
+        }
+      }
+    } catch (error) {
+      console.error('🔔 Error checking pending notification navigation:', error);
+    }
+  };
 
   useEffect(() => {
     // Don't do anything until the navigation state is ready
     if (!navigationState?.key) {
       return;
     };
+
+    // Check for pending notification navigation when app becomes active
+    checkPendingNotificationNavigation();
 
     const checkAuthState = async () => {
       try {

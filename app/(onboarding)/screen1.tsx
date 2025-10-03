@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subtitleText: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 20,
     textAlign: 'center',
     marginBottom: 80,

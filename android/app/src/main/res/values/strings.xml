@@ -5,4 +5,6 @@
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
   <string name="facebook_app_id" translatable="false">1726478318051157</string>
   <string name="facebook_client_token" translatable="false">895915a886fbdd72725dff37aabf54a9</string>
+  <string name="expo_runtime_version">1.0.0</string>
+  <string name="default_notification_channel_id" translatable="false">wave_ai_default_channel</string>
 </resources>

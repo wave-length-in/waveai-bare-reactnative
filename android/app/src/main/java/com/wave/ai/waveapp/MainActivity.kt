@@ -1,8 +1,10 @@
 package com.wave.ai.waveapp
 import expo.modules.splashscreen.SplashScreenManager
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -20,7 +22,26 @@ class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
+    
+    // Handle notification click intent
+    handleNotificationIntent(intent)
+    
     super.onCreate(null)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    handleNotificationIntent(intent)
+  }
+
+  private fun handleNotificationIntent(intent: Intent?) {
+    if (intent != null) {
+      val route = intent.getStringExtra("route")
+      if (route != null) {
+        Log.d("MainActivity", "Notification clicked, route: $route")
+        // The route will be handled by the React Native side via the intent data
+      }
+    }
   }
 
   /**

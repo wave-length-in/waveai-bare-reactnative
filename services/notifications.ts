@@ -1,5 +1,5 @@
 import { API_URL } from '@/config/apiUrl';
-import messaging from '@react-native-firebase/messaging';
+import messaging, { FirebaseMessagingTypes as FMT } from '@react-native-firebase/messaging';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -60,6 +60,30 @@ export async function sendFCMv1Notification(
 
 export async function getFCMToken(): Promise<string | null> {
   try {
+    // For Android 13+ (API 33+), we need to request POST_NOTIFICATIONS permission first
+    if (Platform.OS === 'android') {
+      const { status: currentStatus } = await Notifications.getPermissionsAsync();
+      
+      if (currentStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+            allowDisplayInCarPlay: true,
+            allowCriticalAlerts: true,
+            provideAppNotificationSettings: true,
+            allowProvisional: true,
+          },
+        });
+        
+        if (status !== 'granted') {
+          console.log('Notification permission not granted');
+          return null;
+        }
+      }
+    }
+
     // Request permissions for FCM
     const authStatus = await messaging().requestPermission();
     const enabled =
@@ -244,5 +268,163 @@ export async function triggerFcmTest(userId: string, testType: 'basic' | 'advanc
   if (!res.ok) throw new Error('Failed to trigger FCM test');
   return res.json();
 }
+
+// Utility function to reset notification permission prompt
+export async function resetNotificationPermissionPrompt() {
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  await AsyncStorage.removeItem('notification_permission_asked');
+  console.log('Notification permission prompt has been reset');
+}
+
+// Set up Firebase Cloud Messaging listeners
+export function setupFCMListeners() {
+  // Handle foreground messages
+  const unsubscribeForeground = messaging().onMessage(async (remoteMessage: FMT.RemoteMessage) => {
+    console.log('🔔 FCM message received in foreground:', remoteMessage);
+    
+    if (remoteMessage.notification) {
+      const { title, body } = remoteMessage.notification;
+      
+      // Create a local notification to display it
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: title || 'Wave AI',
+          body: body || 'New message',
+          data: remoteMessage.data,
+          sound: true,
+        },
+        trigger: null, // Show immediately
+      });
+    }
+  });
+
+  // Handle background/quit state messages (notification tap)
+  messaging().onNotificationOpenedApp((remoteMessage: FMT.RemoteMessage) => {
+    console.log('🔔 Notification opened app from background:', remoteMessage);
+    handleNotificationClick(remoteMessage);
+  });
+
+  // Handle notification that opened app from quit state
+  messaging()
+    .getInitialNotification()
+    .then((remoteMessage: FMT.RemoteMessage | null) => {
+      if (remoteMessage) {
+        console.log('🔔 Notification opened app from quit state:', remoteMessage);
+        handleNotificationClick(remoteMessage);
+      }
+    });
+
+  // Handle token refresh
+  const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (token: string) => {
+    console.log('🔄 FCM token refreshed:', token);
+    // You might want to send the new token to your backend
+  });
+
+  // Return cleanup function
+  return () => {
+    unsubscribeForeground();
+    unsubscribeTokenRefresh();
+  };
+}
+
+// Handle notification click to navigate to chat
+function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
+  try {
+    console.log('🔔 Handling notification click:', remoteMessage);
+    
+    // Check if the notification has action data
+    const action = remoteMessage.data?.action;
+    const type = remoteMessage.data?.type;
+    
+    if (action === 'open_chat' || type === 'welcome') {
+      console.log('🔔 Navigating to chat screen');
+      
+      // Store navigation intent for later use
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.setItem('notification_navigation', JSON.stringify({
+        route: '/(main)/chat/default',
+        timestamp: Date.now()
+      }));
+      
+      // Try to navigate immediately if app is active
+      try {
+        const { router } = require('expo-router');
+        router.push('/(main)/chat/default');
+      } catch (routerError) {
+        console.log('🔔 Router not available, navigation will be handled in app');
+      }
+    } else {
+      console.log('🔔 No specific action, navigating to home');
+      
+      // Store navigation intent for later use
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.setItem('notification_navigation', JSON.stringify({
+        route: '/(main)/home',
+        timestamp: Date.now()
+      }));
+      
+      // Try to navigate immediately if app is active
+      try {
+        const { router } = require('expo-router');
+        router.push('/(main)/home');
+      } catch (routerError) {
+        console.log('🔔 Router not available, navigation will be handled in app');
+      }
+    }
+  } catch (error) {
+    console.error('🔔 Error handling notification click:', error);
+  }
+}
+
+// Set up background message handler (must be called at the top level)
+export function setupBackgroundMessageHandler() {
+  messaging().setBackgroundMessageHandler(async (remoteMessage: FMT.RemoteMessage) => {
+    console.log('🔔 FCM message received in background:', remoteMessage);
+    // Background messages are handled by the native NotificationService
+  });
+}
+
+// Debug function to test notification handling
+export const debugNotificationHandling = () => {
+  console.log('🔧 Debug: Setting up notification debug listeners');
+  
+  // Test FCM listeners
+  const unsubscribe = messaging().onMessage((remoteMessage: FMT.RemoteMessage) => {
+    console.log('🔧 Debug: FCM foreground message:', remoteMessage);
+  });
+  
+  const unsubscribeOpened = messaging().onNotificationOpenedApp((remoteMessage: FMT.RemoteMessage) => {
+    console.log('🔧 Debug: FCM notification opened app:', remoteMessage);
+  });
+  
+  const unsubscribeInitial = messaging().getInitialNotification().then((remoteMessage: FMT.RemoteMessage | null) => {
+    if (remoteMessage) {
+      console.log('🔧 Debug: FCM initial notification:', remoteMessage);
+    }
+  });
+  
+  // Test Expo notification listeners with error handling
+  let expoReceiveSub: any = null;
+  let expoResponseSub: any = null;
+  
+  try {
+    expoReceiveSub = Notifications.addNotificationReceivedListener((notification: any) => {
+      console.log('🔧 Debug: Expo notification received:', notification);
+    });
+    
+    expoResponseSub = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      console.log('🔧 Debug: Expo notification response:', response);
+    });
+  } catch (error) {
+    console.log('🔧 Debug: Expo notifications not available:', error);
+  }
+  
+  return () => {
+    unsubscribe();
+    unsubscribeOpened();
+    if (expoReceiveSub) expoReceiveSub.remove();
+    if (expoResponseSub) expoResponseSub.remove();
+  };
+};
 
 

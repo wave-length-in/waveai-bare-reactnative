@@ -291,7 +291,7 @@ export function setupFCMListeners() {
           title: title || 'Wave AI',
           body: body || 'New message',
           data: remoteMessage.data,
-          sound: true,
+          sound: 'sound.wav', // Use custom sound
         },
         trigger: null, // Show immediately
       });
@@ -328,13 +328,15 @@ export function setupFCMListeners() {
 }
 
 // Handle notification click to navigate to chat
-function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
+export function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
   try {
-    console.log('🔔 Handling notification click:', remoteMessage);
+    console.log('🔔 Handling notification click:', JSON.stringify(remoteMessage, null, 2));
     
     // Check if the notification has action data
     const action = remoteMessage.data?.action;
     const type = remoteMessage.data?.type;
+    
+    console.log('🔔 Notification data:', { action, type, data: remoteMessage.data });
     
     if (action === 'open_chat' || type === 'welcome') {
       console.log('🔔 Navigating to chat screen');
@@ -343,15 +345,22 @@ function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       AsyncStorage.setItem('notification_navigation', JSON.stringify({
         route: '/(main)/chat/default',
-        timestamp: Date.now()
-      }));
+        timestamp: Date.now(),
+        source: 'fcm_click'
+      })).then(() => {
+        console.log('🔔 Navigation intent stored successfully');
+      }).catch((error: any) => {
+        console.error('🔔 Error storing navigation intent:', error);
+      });
       
       // Try to navigate immediately if app is active
       try {
         const { router } = require('expo-router');
+        console.log('🔔 Attempting immediate navigation to chat');
         router.push('/(main)/chat/default');
+        console.log('🔔 Navigation command sent');
       } catch (routerError) {
-        console.log('🔔 Router not available, navigation will be handled in app');
+        console.log('🔔 Router not available, navigation will be handled in app:', routerError);
       }
     } else {
       console.log('🔔 No specific action, navigating to home');
@@ -360,15 +369,22 @@ function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       AsyncStorage.setItem('notification_navigation', JSON.stringify({
         route: '/(main)/home',
-        timestamp: Date.now()
-      }));
+        timestamp: Date.now(),
+        source: 'fcm_click'
+      })).then(() => {
+        console.log('🔔 Navigation intent stored successfully');
+      }).catch((error: any) => {
+        console.error('🔔 Error storing navigation intent:', error);
+      });
       
       // Try to navigate immediately if app is active
       try {
         const { router } = require('expo-router');
+        console.log('🔔 Attempting immediate navigation to home');
         router.push('/(main)/home');
+        console.log('🔔 Navigation command sent');
       } catch (routerError) {
-        console.log('🔔 Router not available, navigation will be handled in app');
+        console.log('🔔 Router not available, navigation will be handled in app:', routerError);
       }
     }
   } catch (error) {

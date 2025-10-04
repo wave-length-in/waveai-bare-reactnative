@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getStoredAuthData } from '@/services/auth';
 import { addNotificationListeners, debugNotificationHandling, getFCMToken, sendTokenToBackend, setForegroundNotificationHandler, setupBackgroundMessageHandler, setupFCMListeners } from '@/services/notifications';
+import '@/utils/notification-test'; // Load test utilities
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
@@ -68,16 +69,18 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
 
   const handleNotificationResponse = (response: any) => {
     try {
-      console.log('🔔 Handling notification response:', response);
+      console.log('🔔 Handling notification response:', JSON.stringify(response, null, 2));
       
       const action = response.notification?.request?.content?.data?.action;
       const type = response.notification?.request?.content?.data?.type;
       
+      console.log('🔔 Expo notification data:', { action, type, data: response.notification?.request?.content?.data });
+      
       if (action === 'open_chat' || type === 'welcome') {
-        console.log('🔔 Navigating to chat screen from notification');
+        console.log('🔔 Navigating to chat screen from Expo notification');
         router.push('/(main)/chat/default');
       } else {
-        console.log('🔔 No specific action, navigating to home from notification');
+        console.log('🔔 No specific action, navigating to home from Expo notification');
         router.push('/(main)/home');
       }
     } catch (error) {
@@ -88,11 +91,16 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
   // Check for pending notification navigation
   const checkPendingNotificationNavigation = async () => {
     try {
+      console.log('🔔 Checking for pending notification navigation...');
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const navigationData = await AsyncStorage.getItem('notification_navigation');
       
+      console.log('🔔 Stored navigation data:', navigationData);
+      
       if (navigationData) {
-        const { route, timestamp } = JSON.parse(navigationData);
+        const { route, timestamp, source } = JSON.parse(navigationData);
+        
+        console.log('🔔 Parsed navigation data:', { route, timestamp, source });
         
         // Only process if it's recent (within last 30 seconds)
         if (Date.now() - timestamp < 30000) {
@@ -102,11 +110,64 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
           await AsyncStorage.removeItem('notification_navigation');
           
           // Navigate to the route
+          console.log('🔔 Navigating to stored route:', route);
           router.push(route);
         } else {
+          console.log('🔔 Navigation data too old, cleaning up');
           // Clean up old navigation data
           await AsyncStorage.removeItem('notification_navigation');
         }
+      } else {
+        console.log('🔔 No pending navigation data found');
+      }
+      
+      // Check for Android notification data from SharedPreferences
+      try {
+        const { NativeModules } = require('react-native');
+        const SharedPreferencesBridge = NativeModules.SharedPreferencesBridge;
+        
+        if (SharedPreferencesBridge) {
+          console.log('🔔 Checking SharedPreferences for notification data...');
+          const sharedPrefsData = await SharedPreferencesBridge.getNotificationData();
+          
+          if (sharedPrefsData) {
+            console.log('🔔 Found notification data in SharedPreferences:', sharedPrefsData);
+            
+            try {
+              const { route, action, type, timestamp } = JSON.parse(sharedPrefsData);
+              
+              if (route) {
+                const notificationTime = timestamp || 0;
+                const timeDiff = Date.now() - notificationTime;
+                
+                console.log('🔔 Time diff:', timeDiff, 'ms');
+                
+                if (timeDiff < 30000) { // Within 30 seconds
+                  console.log('🔔 Processing SharedPreferences notification click:', route);
+                  
+                  // Clear the data
+                  await SharedPreferencesBridge.clearNotificationData();
+                  
+                  // Navigate to the route
+                  console.log('🔔 Navigating to SharedPreferences notification route:', route);
+                  router.push(route);
+                } else {
+                  console.log('🔔 SharedPreferences notification data too old, cleaning up');
+                  await SharedPreferencesBridge.clearNotificationData();
+                }
+              }
+            } catch (parseError) {
+              console.log('🔔 Error parsing SharedPreferences notification data:', parseError);
+              await SharedPreferencesBridge.clearNotificationData();
+            }
+          } else {
+            console.log('🔔 No notification data found in SharedPreferences');
+          }
+        } else {
+          console.log('🔔 SharedPreferencesBridge not available');
+        }
+      } catch (error) {
+        console.log('🔔 Error checking SharedPreferences notification data:', error);
       }
     } catch (error) {
       console.error('🔔 Error checking pending notification navigation:', error);

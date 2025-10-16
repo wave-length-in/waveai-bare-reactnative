@@ -363,12 +363,12 @@ export function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
         console.log('🔔 Router not available, navigation will be handled in app:', routerError);
       }
     } else {
-      console.log('🔔 No specific action, navigating to home');
+      console.log('🔔 No specific action, navigating to default chat');
       
       // Store navigation intent for later use
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       AsyncStorage.setItem('notification_navigation', JSON.stringify({
-        route: '/(main)/home',
+        route: '/(main)/chat/688210873496b5e441480d22',
         timestamp: Date.now(),
         source: 'fcm_click'
       })).then(() => {
@@ -380,8 +380,8 @@ export function handleNotificationClick(remoteMessage: FMT.RemoteMessage) {
       // Try to navigate immediately if app is active
       try {
         const { router } = require('expo-router');
-        console.log('🔔 Attempting immediate navigation to home');
-        router.push('/(main)/home');
+        console.log('🔔 Attempting immediate navigation to default chat');
+        router.push('/(main)/chat/688210873496b5e441480d22');
         console.log('🔔 Navigation command sent');
       } catch (routerError) {
         console.log('🔔 Router not available, navigation will be handled in app:', routerError);

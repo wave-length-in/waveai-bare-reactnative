@@ -166,6 +166,20 @@ export const sendOtp = async (mobileNumber: string): Promise<SendOtpResponse> =>
     console.log("")
     console.log("Calling Send OTP")
 
+    // Check if this is the bypass mobile number
+    if (mobileNumber === "+918739900038") {
+      console.log("🔓 Bypassing OTP for mobile number:", mobileNumber);
+      // Store a mock encrypted token for bypass
+      const mockEncryptedToken = "bypass_token_" + Date.now();
+      await AsyncStorage.setItem(STORAGE_KEYS.ENCRYPTED_TOKEN, mockEncryptedToken);
+      
+      return {
+        success: true,
+        message: "OTP bypassed for development",
+        encryptedToken: mockEncryptedToken
+      };
+    }
+
     const res = await fetch(`${API_URL}/send-otp/`, {
       method: "POST",
       headers: {
@@ -198,6 +212,16 @@ export const verifyOtp = async (otp: string): Promise<VerifyOtpResponse> => {
     
     if (!encryptedToken) {
       throw new Error("No encrypted token found. Please request OTP again.");
+    }
+
+    // Check if this is a bypass token
+    if (encryptedToken.startsWith("bypass_token_")) {
+      console.log("🔓 Bypassing OTP verification for development");
+      return {
+        success: true,
+        message: "OTP verification bypassed for development",
+        token: "bypass_verification_token_" + Date.now()
+      };
     }
 
     const res = await fetch(`${API_URL}/verify-otp/`, {

@@ -70,12 +70,22 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
 
   const isOtpComplete = otp.every(digit => digit !== '');
 
+  const isBypassNumber = mobile === "8739900038";
+
   return (
-    <View className="space-y-6 w-[90%]">
+    <View className="space-y-6 w-full pt-5">
       <Text className="text-4xl text-white font-sans my-4">Verify OTP</Text>
       <Text className="text-white mb-4 text-base">
-        Enter the 4-digit OTP sent to +91 {mobile}
+        {isBypassNumber 
+          ? `Development Mode: Enter any 6-digit code for +91 ${mobile}`
+          : `Enter the 6-digit OTP sent to +91 ${mobile}`
+        }
       </Text>
+      {isBypassNumber && (
+        <Text className="text-blue-400 mb-4 text-sm text-center">
+          🔓 OTP verification is bypassed for this number
+        </Text>
+      )}
       
       {/* OTP Input Fields */}
       <View className="flex-row justify-between">

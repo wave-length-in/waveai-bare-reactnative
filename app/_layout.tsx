@@ -2,6 +2,7 @@
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { initializeMixpanel, trackNavigation } from '@/services/analytics';
 import { getStoredAuthData } from '@/services/auth';
 import { addNotificationListeners, debugNotificationHandling, getFCMToken, sendTokenToBackend, setForegroundNotificationHandler, setupBackgroundMessageHandler, setupFCMListeners } from '@/services/notifications';
 import '@/utils/notification-test'; // Load test utilities
@@ -80,8 +81,8 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
         console.log('🔔 Navigating to chat screen from Expo notification');
         router.push('/(main)/chat/default');
       } else {
-        console.log('🔔 No specific action, navigating to home from Expo notification');
-        router.push('/(main)/home');
+        console.log('🔔 No specific action, navigating to default chat from Expo notification');
+        router.push('/(main)/chat/688210873496b5e441480d22');
       }
     } catch (error) {
       console.error('🔔 Error handling notification response:', error);
@@ -198,8 +199,8 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
         // Handle various initial states
         const shouldRedirectToOnboarding = 
           segments.length === 0 as any ||
-          (segments as string[]).includes('+not-found') ||
           (segments as string[]).includes('_sitemap') ||
+          (segments as string[]).includes('+not-found') ||
           !segments[0];
 
 
@@ -210,6 +211,7 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
           // Use timeout for iOS stability
           const delay = Platform.OS === 'ios' ? 300 : 100;
           setTimeout(() => {
+            trackNavigation('root', 'onboarding');
             router.replace('/(onboarding)/screen1');
             setIsLoading(false);
           }, delay);
@@ -233,6 +235,7 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
           
           const delay = Platform.OS === 'ios' ? 300 : 100;
           setTimeout(() => {
+            trackNavigation('protected_route', 'onboarding');
             router.replace('/(onboarding)/screen1');
             setIsLoading(false);
           }, delay);
@@ -276,6 +279,11 @@ export default function RootLayout() {
     Lexend: require('../assets/fonts/Lexend-Regular.ttf'),
   });
 
+  // Initialize Mixpanel when app starts
+  useEffect(() => {
+    initializeMixpanel();
+  }, []);
+
   if (!loaded) {
     return null;
   }
@@ -301,10 +309,7 @@ export default function RootLayout() {
                 />
                 <Stack.Screen 
                   name="+not-found" 
-                  options={{ 
-                    headerShown: false,
-                    presentation: 'modal' 
-                  }} 
+                  options={{ headerShown: false }} 
                 />
               </Stack>
             </InitialAuthCheck>

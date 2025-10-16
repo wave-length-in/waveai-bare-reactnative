@@ -1,7 +1,18 @@
 import { SOCKET_URL } from '@/config/apiUrl';
+import {
+    trackAIResponse,
+    trackChatInitiated,
+    trackImageUpload,
+    trackMessageSent,
+    trackPageView,
+    trackVoiceRecording
+} from '@/services/analytics';
+import { getStoredAuthData } from '@/services/auth';
+import { convertSpeechToText } from '@/services/speechToText';
+import { convertTextToSpeech } from '@/services/textToSpeech';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -12,10 +23,6 @@ import {
     View
 } from 'react-native';
 import { io, Socket } from 'socket.io-client';
-
-import { getStoredAuthData } from '@/services/auth';
-import { convertSpeechToText } from '@/services/speechToText';
-import { convertTextToSpeech } from '@/services/textToSpeech';
 import ChatHeader from './ChatHeader';
 import ChatInput from './ChatInput';
 import { ChatSection } from './ChatSection';
@@ -50,20 +57,14 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
     const pendingMessagesRef = useRef<string[]>([]);
     const pendingImageRef = useRef<string | null>(null);
-    const isUserActivelyTypingRef = useRef(false);
     const deliveryTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
     const [isUploading, setIsUploading] = useState(false);
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
     const [isProcessingTTS, setIsProcessingTTS] = useState(false);
 
-    // Memoize character config to prevent recreation
-    const characterConfig = useMemo(() => ({
-        characterId,
-        characterName
-    }), [characterId, characterName]);
 
-    // Get userId on component mount
+    // Get userId on component mount and track page view
     useEffect(() => {
         const getUserId = async () => {
             try {
@@ -78,7 +79,14 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             }
         };
         getUserId();
-    }, []);
+        
+        // Track page view and chat initiation
+        trackPageView('Chat Screen', {
+            character_id: characterId,
+            character_name: characterName
+        });
+        trackChatInitiated(characterId, characterName);
+    }, [characterId, characterName]);
 
     const refetchChatHistory = useCallback(() => {
         try {
@@ -86,12 +94,12 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             setIsLoadingHistory(true);
             socket.emit('fetch_chat_history', {
                 userId: userId,
-                characterId: characterConfig.characterId,
+                characterId: characterId,
             });
         } catch (e) {
             console.log('[chat] Refetch history error:', e);
         }
-    }, [socket, userId, characterConfig]);
+    }, [socket, userId, characterId]);
 
     // Cleanup delivery timeouts on unmount
     useEffect(() => {
@@ -130,10 +138,12 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             clearTimeout(debounceTimer.current);
         }
 
+        // Start 2.5 second timer
         debounceTimer.current = setTimeout(() => {
-            // Only trigger if user is not actively typing and we have pending content (messages or image)
-            if (socket && userId && !isUserActivelyTypingRef.current &&
-                (pendingMessagesRef.current.length > 0 || pendingImageRef.current)) {
+            debounceTimer.current = null;
+            
+            // Only trigger if we have pending content (messages or image)
+            if (socket && userId && (pendingMessagesRef.current.length > 0 || pendingImageRef.current)) {
 
                 const combinedMessage = pendingMessagesRef.current.join(" ");
                 const imageUrl = pendingImageRef.current;
@@ -165,7 +175,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 if (combinedMessage.trim() || imageUrl) {
                     socket.emit("summarize_message", {
                         userId: userId,
-                        characterId: characterConfig.characterId,
+                        characterId: characterId,
                         message: combinedMessage.trim() || "",
                         image_url: imageUrl || undefined
                     });
@@ -174,8 +184,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 // Trigger AI with combined message and/or image
                 const aiPayload: any = {
                     userId: userId,
-                    characterId: characterConfig.characterId,
-                    characterName: characterConfig.characterName,
+                    characterId: characterId,
+                    characterName: characterName,
                     type: messageType, // Use the passed message type
                 };
 
@@ -195,8 +205,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 pendingMessagesRef.current = [];
                 pendingImageRef.current = null;
             }
-        }, 2000); // 2-second delay
-    }, [socket, userId, characterConfig]);
+        }, 2500); // 2.5-second delay
+    }, [socket, userId, characterId, characterName]);
 
     // Setup Socket connection
     useEffect(() => {
@@ -216,7 +226,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             setIsLoadingHistory(true);
             newSocket.emit('fetch_chat_history', {
                 userId: userId,
-                characterId: characterConfig.characterId,
+                characterId: characterId,
             });
         });
 
@@ -296,6 +306,9 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
             setLoading(false);
             
+            // Track AI response received
+            trackAIResponse(characterId);
+            
             // Do not generate TTS on the client. Backend emits receive_tts for audio flows only.
         });
 
@@ -325,7 +338,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         return () => {
             newSocket.disconnect();
         };
-    }, [userId, characterConfig]);
+    }, [userId]);
 
     const handleImagePreview = useCallback((file: ImagePicker.ImagePickerAsset, text: string = "") => {
         const previewMessage: Message = {
@@ -384,19 +397,22 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Send to server
         socket.emit('upload_image', {
             userId: userId,
-            characterId: characterConfig.characterId,
-            characterName: characterConfig.characterName,
+            characterId: characterId,
+            characterName: characterName,
             image_url: image_url,
             message: messageContent,
         });
 
         // Add image to pending for AI
         pendingImageRef.current = image_url;
+        
+        // Track image upload success
+        trackImageUpload(characterId, true);
+        trackMessageSent('image', characterId);
 
         // Start AI processing
-        isUserActivelyTypingRef.current = false;
         triggerAiReplyWithDebounce('text');
-    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce]);
+    }, [socket, userId, characterId, characterName, triggerAiReplyWithDebounce]);
 
     const handleImageUploadError = useCallback((messageId: number) => {
         // Clear any timeouts for this message
@@ -409,12 +425,18 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Remove the failed upload message
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
         setIsUploading(false);
-    }, []);
+        
+        // Track image upload failure
+        trackImageUpload(characterId, false);
+    }, [characterId]);
 
     const handleVoiceRecordingComplete = useCallback(async (audioUri: string, messageId: number) => {
         if (!socket || !userId) return;
     
         console.log('🎤 Voice recording completed, processing...', { audioUri, messageId });
+        
+        // Track voice recording completion
+        trackVoiceRecording('stop', characterId);
     
         // Create a preview message for the voice note
         const voiceMessage: Message = {
@@ -438,7 +460,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             const speechResult = await convertSpeechToText({
                 audioUri,
                 userId,
-                characterId: characterConfig.characterId,
+                characterId: characterId,
             });
     
             console.log('🎤 Speech-to-text result:', speechResult);
@@ -464,8 +486,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             // and add transcribed text to memory only
             socket.emit('send_message', {
                 userId: userId,
-                characterId: characterConfig.characterId,
-                characterName: characterConfig.characterName,
+                characterId: characterId,
+                characterName: characterName,
                 message: speechResult.DisplayText, // This is for memory and AI processing
                 audio_url: speechResult.file_url,  // This gets saved to database
                 type: 'audio',
@@ -473,9 +495,11 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     
             // Add to pending messages for AI processing
             pendingMessagesRef.current.push(speechResult.DisplayText);
+            
+            // Track audio message sent
+            trackMessageSent('audio', characterId, speechResult.DisplayText.length);
     
-            // Mark user as not actively typing and trigger AI with audio type
-            isUserActivelyTypingRef.current = false;
+            // Trigger AI with audio type
             triggerAiReplyWithDebounce('audio');
     
         } catch (error) {
@@ -493,7 +517,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         } finally {
             setIsProcessingVoice(false);
         }
-    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
+    }, [socket, userId, characterId, characterName, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
 
     const handleVoiceRecordingError = useCallback((messageId: number) => {
         console.error('❌ Voice recording error for message:', messageId);
@@ -532,8 +556,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Send message to backend for storage immediately
         socket.emit('send_message', {
             userId: userId,
-            characterId: characterConfig.characterId,
-            characterName: characterConfig.characterName,
+            characterId: characterId,
+            characterName: characterName,
             message: content,
             type: 'text',
         });
@@ -541,42 +565,38 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         // Add to pending messages for AI processing
         pendingMessagesRef.current.push(content);
 
-        // Mark user as not actively typing (they just sent a message)
-        isUserActivelyTypingRef.current = false;
+        // Track message sent
+        trackMessageSent('text', characterId, content.length);
 
         // Start/restart the debounce timer immediately
         triggerAiReplyWithDebounce('text');
-    }, [socket, userId, characterConfig, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
+    }, [socket, userId, characterId, characterName, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout]);
 
     const handleInputChange = useCallback((text: string) => {
+        // Update input value immediately for responsive UI
         setInputValue(text);
 
-        // Clear any existing typing timer
-        if (typingTimer.current) {
-            clearTimeout(typingTimer.current);
-        }
-
-        // If user is typing (text length > 0), mark as actively typing
+        // Reset debounce timer when user types (any text input)
         if (text.trim()) {
-            if (!isUserActivelyTypingRef.current) {
-                isUserActivelyTypingRef.current = true;
-            }
-
-            // Cancel any pending AI calls
+            // User is typing - cancel any pending AI calls
             if (debounceTimer.current) {
                 clearTimeout(debounceTimer.current);
                 debounceTimer.current = null;
             }
         } else {
-            // User cleared the input, wait a bit to see if they start typing again
-            typingTimer.current = setTimeout(() => {
-                isUserActivelyTypingRef.current = false;
-
-                // If we have pending content (messages or image) and user stopped typing, restart timer
-                if (pendingMessagesRef.current.length > 0 || pendingImageRef.current) {
-                    triggerAiReplyWithDebounce('text');
+            // Input is empty - start timer to resume AI processing if we have pending content
+            if (pendingMessagesRef.current.length > 0 || pendingImageRef.current) {
+                // Clear any existing timer first
+                if (debounceTimer.current) {
+                    clearTimeout(debounceTimer.current);
                 }
-            }, 500);
+                
+                // Start 2.5 second timer to trigger AI
+                debounceTimer.current = setTimeout(() => {
+                    debounceTimer.current = null;
+                    triggerAiReplyWithDebounce('text');
+                }, 2500);
+            }
         }
     }, [triggerAiReplyWithDebounce]);
 
@@ -627,7 +647,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             
             const ttsResult = await convertTextToSpeech({
                 userId,
-                characterId: characterConfig.characterId,
+                characterId: characterId,
                 text: cleanedText,
                 voiceName: 'en-IN-NeerjaNeural',
                 language: 'en-IN',
@@ -668,7 +688,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         } finally {
             setIsProcessingTTS(false);
         }
-    }, [userId, characterConfig.characterId]);
+    }, [userId, characterId]);
 
     const handleTypingComplete = useCallback((messageId: number) => {
         setMessages((prev) =>

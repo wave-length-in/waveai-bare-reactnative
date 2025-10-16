@@ -5,7 +5,6 @@ export const AppRoutes = {
   onboarding: '/(onboarding)/screen1',
   login: '/(auth)/loginScreen',
   basicDetails: '/(auth)/basicDetails',
-  home: '/(main)/home',
   chat: (id: string) => `/(main)/chat/${id}`,
   defaultChat: '/(main)/chat/688210873496b5e441480d22',
   report: '/(main)/report',
@@ -42,7 +41,6 @@ export const navigateTo = {
   onboarding: () => safeNavigate(AppRoutes.onboarding),
   login: () => safeNavigate(AppRoutes.login),
   basicDetails: () => safeNavigate(AppRoutes.basicDetails),
-  home: () => safeNavigate(AppRoutes.home),
   chat: (id: string) => safeNavigate(AppRoutes.chat(id)),
   defaultChat: () => safeNavigate(AppRoutes.defaultChat),
   report: () => safeNavigate(AppRoutes.report),
@@ -50,7 +48,6 @@ export const navigateTo = {
   // Replace versions
   replaceToOnboarding: () => safeNavigate(AppRoutes.onboarding, true),
   replaceToLogin: () => safeNavigate(AppRoutes.login, true),
-  replaceToHome: () => safeNavigate(AppRoutes.home, true),
   replaceToChat: (id: string) => safeNavigate(AppRoutes.chat(id), true),
   replaceToDefaultChat: () => safeNavigate(AppRoutes.defaultChat, true),
   replaceToReport: () => safeNavigate(AppRoutes.report, true),

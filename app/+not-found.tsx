@@ -1,34 +1,42 @@
-// app/+not-found.tsx
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { Image, StyleSheet } from 'react-native';
 
-export default function NotFoundScreen() {
+export default function NotFound() {
   useEffect(() => {
+    // Immediately redirect to onboarding
     const timeout = setTimeout(() => {
       router.replace('/(onboarding)/screen1');
-    }, 1000);
+    }, 100); // Very short delay to prevent flash
 
     return () => clearTimeout(timeout);
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Redirecting...</Text>
-    </View>
+    <LinearGradient
+      colors={["#000", "#111"]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.container}
+    >
+      <Image
+        source={require('../assets/images/wave-new-logo2.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+    </LinearGradient>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#000',
   },
-  text: {
-    color: '#fff',
-    fontSize: 16,
+  logo: {
+    width: 200,
+    height: 200,
   },
 });

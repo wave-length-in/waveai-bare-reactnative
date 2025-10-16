@@ -1,3 +1,4 @@
+import { trackButtonClick, trackPageView } from '@/services/analytics';
 import { getStoredAuthData } from '@/services/auth';
 import { navigateTo } from '@/utils/routing-helper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,8 +8,15 @@ import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { AppEventsLogger } from 'react-native-fbsdk-next';
 
 export default function OnboardingScreen() {
+  // Track page view when component mounts
+  useEffect(() => {
+    trackPageView('Onboarding Screen');
+  }, []);
+
   const handleGetStarted = async () => {
     console.log('Pressing Button');
+    trackButtonClick('Lets Chat', 'Onboarding Screen');
+    
     try {
       AppEventsLogger.logEvent('LetsChatButtonPressed');
     } catch (e) {

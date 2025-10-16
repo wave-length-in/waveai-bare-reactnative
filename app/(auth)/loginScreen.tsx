@@ -2,6 +2,7 @@ import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import OTPVerification from "@/components/auth/OtpVerification";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from '@/contexts/AuthContext';
+import { identifyUser, trackButtonClick, trackLogin, trackPageView } from "@/services/analytics";
 import { configureGoogleSignIn, loginUser, sendOtp, signInWithGoogle, STORAGE_KEYS, verifyOtp } from "@/services/auth";
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetView } from "@gorhom/bottom-sheet";
@@ -24,6 +25,11 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  // Track page view when component mounts
+  useEffect(() => {
+    trackPageView('Login Screen');
+  }, []);
 
   const handleKeyboardShow = () => {
     setIsKeyboardVisible(true);
@@ -61,6 +67,8 @@ const LoginScreen: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    trackButtonClick('Google Sign In', 'Login Screen');
+    
     try {
       console.log('🔍 User initiated Google Sign-In...');
       const googleUser = await signInWithGoogle();
@@ -72,6 +80,14 @@ const LoginScreen: React.FC = () => {
         if (loginResponse.success) {
           // User exists, login successful
           showToast("success", "Login Successful", "Welcome back!");
+          
+          // Track successful login
+          trackLogin('google', loginResponse.data.userId);
+          identifyUser(loginResponse.data.userId, {
+            email: googleUser.email,
+            name: googleUser.name,
+            auth_method: 'google'
+          });
           
           // Navigate to chat with userId
           setTimeout(() => {
@@ -114,28 +130,59 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleGetOtp = async () => {
+    trackButtonClick('Get OTP', 'Login Screen', { mobile_length: mobile.length });
+    
     if (mobile.trim().length !== 10) {
       showToast("error", "Invalid Mobile Number", "Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    // Send OTP for mobile number verification
     setLoading(true);
     try {
       // Store mobile number
       await AsyncStorage.setItem(STORAGE_KEYS.MOBILE_NUMBER, `+91${mobile}`);
 
-      // Send OTP
-      const response = await sendOtp(`+91${mobile}`);
-
-      if (response.success) {
-        setOtpSent(true);
-        showToast("success", "OTP Sent", "Please check your messages for the OTP.");
+      // Check if this is the bypass number - direct login without OTP
+      if (mobile === "8739900038") {
+        console.log("🔓 Bypass number detected - proceeding with direct login");
+        
+        // Try to login directly
+        try {
+          const loginResponse = await loginUser(`+91${mobile}`);
+          
+          if (loginResponse.success) {
+            // User exists, login successful
+            showToast("success", "Login Successful", "Welcome back!");
+            
+            // Navigate to chat with userId
+            setTimeout(() => {
+              router.push(`/chat/${loginResponse.data.userId}`);
+            }, 1000);
+          }
+        } catch (loginError: any) {
+          // User doesn't exist, redirect to registration
+          if (loginError.message.includes("not found") || loginError.message.includes("does not exist")) {
+            showToast("info", "New User", "Let's create your account!");
+            setTimeout(() => {
+              router.push("/(auth)/basicDetails");
+            }, 1000);
+          } else {
+            throw loginError;
+          }
+        }
       } else {
-        showToast("error", "Error", response.message || "Failed to send OTP");
+        // Normal flow - send OTP
+        const response = await sendOtp(`+91${mobile}`);
+
+        if (response.success) {
+          setOtpSent(true);
+          showToast("success", "OTP Sent", "Please check your messages for the OTP.");
+        } else {
+          showToast("error", "Error", response.message || "Failed to send OTP");
+        }
       }
     } catch (error: any) {
-      showToast("error", "Error", error.message || "Failed to send OTP");
+      showToast("error", "Error", error.message || "Failed to process login");
     } finally {
       setLoading(false);
     }
@@ -143,6 +190,8 @@ const LoginScreen: React.FC = () => {
 
   const handleVerifyOtp = async () => {
     const otpCode = otp.join('');
+    trackButtonClick('Verify OTP', 'Login Screen', { otp_length: otpCode.length });
+    
     if (otpCode.length !== 6) {
       showToast("error", "Invalid OTP", "Please enter a valid 4-digit OTP.");
       return;
@@ -161,6 +210,13 @@ const LoginScreen: React.FC = () => {
           if (loginResponse.success) {
             // User exists, login successful
             showToast("success", "Login Successful", "Welcome back!");
+
+            // Track successful login
+            trackLogin('otp', loginResponse.data.userId);
+            identifyUser(loginResponse.data.userId, {
+              mobile: `+91${mobile}`,
+              auth_method: 'otp'
+            });
 
             // Navigate to chat with userId
             setTimeout(() => {
@@ -285,6 +341,13 @@ const LoginScreen: React.FC = () => {
                   />
                 </View>
                 
+                {/* Bypass Number Indicator */}
+                {mobile === "8739900038" && (
+                  <Text className="text-blue-400 text-sm mt-2 text-center">
+                    🔓 Development Mode: Direct login enabled
+                  </Text>
+                )}
+                
                 {/* Get OTP Button */}
                 <TouchableOpacity
                   onPress={handleGetOtp}
@@ -297,9 +360,12 @@ const LoginScreen: React.FC = () => {
                     end={{ x: 1, y: 0 }}
                     className="flex-row items-center justify-center py-4 px-6 rounded-full"
                   >
-                    <Ionicons name="call" size={20} color="#fff" />
+                    <Ionicons name={mobile === "8739900038" ? "log-in" : "call"} size={20} color="#fff" />
                     <Text className="text-white font-semibold text-lg ml-2">
-                      {loading ? "Sending OTP..." : "Get OTP"}
+                      {loading 
+                        ? (mobile === "8739900038" ? "Logging in..." : "Sending OTP...")
+                        : (mobile === "8739900038" ? "Login" : "Get OTP")
+                      }
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>

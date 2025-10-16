@@ -1,4 +1,5 @@
 import { API_URL } from '@/config/apiUrl';
+import { trackButtonClick, trackVoiceRecording } from '@/services/analytics';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useState } from 'react';
@@ -43,6 +44,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSubmit = useCallback(() => {
     if (inputValue.trim()) {
+      trackButtonClick('Send Message', 'Chat Input', { message_length: inputValue.trim().length });
       onSendMessage(inputValue.trim());
       onInputChange('');
     }
@@ -86,6 +88,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleImageSelect = useCallback(async () => {
     if (isUploading || isRecording) return;
+    
+    trackButtonClick('Image Select', 'Chat Input');
 
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -141,10 +145,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleVoiceRecordingCancel = useCallback(() => {
     setIsRecording(false);
+    trackVoiceRecording('cancel', 'default');
+    trackButtonClick('Voice Recording Cancel', 'Chat Input');
   }, []);
 
   const startVoiceRecording = useCallback(() => {
     setIsRecording(true);
+    trackVoiceRecording('start', 'default');
+    trackButtonClick('Voice Recording Start', 'Chat Input');
   }, []);
 
   const canSend = inputValue.trim().length > 0 && !isUploading && !isRecording;
@@ -165,6 +173,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
             placeholder="Type a message..."
             placeholderTextColor="rgba(255,255,255,0.5)"
             multiline
+            textAlignVertical="center"
+            autoCorrect={false}
+            autoCapitalize="sentences"
+            returnKeyType="default"
+            blurOnSubmit={false}
           />
 
           {/* Microphone Button */}

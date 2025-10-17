@@ -34,10 +34,17 @@ const MIXPANEL_TOKEN = 'your_actual_mixpanel_token_here';
 
 ## 📊 Events Being Tracked
 
+Following the [official Mixpanel React Native documentation](https://docs.mixpanel.com/docs/tracking-methods/sdks/react-native):
+
+### User Identity Management
+- ✅ **User Identification** - Properly identifies users with `identify()` method
+- ✅ **User Profiles** - Sets user profile properties using `getPeople().set()`
+- ✅ **User Reset** - Clears user data on logout using `reset()` method
+- ✅ **Opt-in/Opt-out** - Privacy controls for user tracking
+
 ### Authentication Events
 - ✅ **User Login** - Tracks login method (Google, OTP) and user ID
 - ✅ **User Signup** - Tracks signup method and user ID
-- ✅ **User Identification** - Links events to specific users
 
 ### Chat Events
 - ✅ **Chat Initiated** - When user starts chatting with a character
@@ -130,13 +137,28 @@ Once configured, you can view your analytics in the Mixpanel dashboard:
 You can add custom events anywhere in your app:
 
 ```typescript
-import { trackEvent } from '@/services/analytics';
+import { trackEvent, identifyUser, setUserProperties, resetUser } from '@/services/analytics';
 
 // Track custom event
 trackEvent('Custom Event Name', {
   custom_property: 'value',
   user_segment: 'premium'
 });
+
+// Identify user and set profile properties
+identifyUser('user123', {
+  email: 'user@example.com',
+  name: 'John Doe',
+  plan: 'premium'
+});
+
+// Set user properties only if they don't exist
+setUserPropertiesOnce({
+  first_login_date: new Date().toISOString()
+});
+
+// Reset user data on logout
+resetUser();
 ```
 
 ## 📱 Platform Support

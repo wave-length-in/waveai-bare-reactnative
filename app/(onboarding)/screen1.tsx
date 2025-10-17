@@ -15,7 +15,7 @@ export default function OnboardingScreen() {
 
   const handleGetStarted = async () => {
     console.log('Pressing Button');
-    trackButtonClick('Lets Chat', 'Onboarding Screen');
+    trackButtonClick('Lets Chat', 'Onboarding Screen', { action: 'start_onboarding' });
     
     try {
       AppEventsLogger.logEvent('LetsChatButtonPressed');

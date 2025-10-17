@@ -67,7 +67,7 @@ const LoginScreen: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    trackButtonClick('Google Sign In', 'Login Screen');
+    trackButtonClick('Google Sign In', 'Login Screen', { auth_method: 'google' });
     
     try {
       console.log('🔍 User initiated Google Sign-In...');
@@ -81,12 +81,15 @@ const LoginScreen: React.FC = () => {
           // User exists, login successful
           showToast("success", "Login Successful", "Welcome back!");
           
-          // Track successful login
+          // Track successful login following official documentation
           trackLogin('google', loginResponse.data.userId);
+          
+          // Identify user and set profile properties
           identifyUser(loginResponse.data.userId, {
             email: googleUser.email,
             name: googleUser.name,
-            auth_method: 'google'
+            auth_method: 'google',
+            login_date: new Date().toISOString()
           });
           
           // Navigate to chat with userId
@@ -130,7 +133,7 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleGetOtp = async () => {
-    trackButtonClick('Get OTP', 'Login Screen', { mobile_length: mobile.length });
+    trackButtonClick('Get OTP', 'Login Screen', { auth_method: 'otp', mobile_length: mobile.length });
     
     if (mobile.trim().length !== 10) {
       showToast("error", "Invalid Mobile Number", "Please enter a valid 10-digit mobile number.");
@@ -190,7 +193,7 @@ const LoginScreen: React.FC = () => {
 
   const handleVerifyOtp = async () => {
     const otpCode = otp.join('');
-    trackButtonClick('Verify OTP', 'Login Screen', { otp_length: otpCode.length });
+    trackButtonClick('Verify OTP', 'Login Screen', { auth_method: 'otp', otp_length: otpCode.length });
     
     if (otpCode.length !== 6) {
       showToast("error", "Invalid OTP", "Please enter a valid 4-digit OTP.");
@@ -211,11 +214,14 @@ const LoginScreen: React.FC = () => {
             // User exists, login successful
             showToast("success", "Login Successful", "Welcome back!");
 
-            // Track successful login
+            // Track successful login following official documentation
             trackLogin('otp', loginResponse.data.userId);
+            
+            // Identify user and set profile properties
             identifyUser(loginResponse.data.userId, {
               mobile: `+91${mobile}`,
-              auth_method: 'otp'
+              auth_method: 'otp',
+              login_date: new Date().toISOString()
             });
 
             // Navigate to chat with userId

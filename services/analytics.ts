@@ -1,13 +1,27 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // Initialize Mixpanel
 let mixpanel: any = null;
 
-// Initialize Mixpanel with token from environment
+// Helper function to get current user ID
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const authData = await AsyncStorage.getItem('authData');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      return parsed.userId || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Failed to get current user ID:', error);
+    return null;
+  }
+};
+
+// Initialize Mixpanel with token from environment following official documentation
 export const initializeMixpanel = async () => {
   try {
-    // You'll need to replace this with your actual Mixpanel token
-    // You can get this from your Mixpanel project settings
     const MIXPANEL_TOKEN = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN || 'your_mixpanel_token_here';
     
     if (MIXPANEL_TOKEN === 'your_mixpanel_token_here') {
@@ -15,10 +29,21 @@ export const initializeMixpanel = async () => {
       return;
     }
 
-    // Dynamic import to handle the module correctly
-    const Mixpanel = require('mixpanel-react-native');
-    mixpanel = new Mixpanel.default(MIXPANEL_TOKEN, true);
-    await mixpanel.init();
+    // Import Mixpanel class from the SDK following official documentation
+    const { Mixpanel } = require('mixpanel-react-native');
+    
+    // Create an instance of Mixpanel using your project token
+    // disable legacy autotrack mobile events
+    const trackAutomaticEvents = false;
+    mixpanel = new Mixpanel(MIXPANEL_TOKEN, trackAutomaticEvents);
+    
+    // Initialize Mixpanel
+    mixpanel.init();
+    
+    // Enable debug logging in development
+    if (__DEV__) {
+      mixpanel.setLoggingEnabled(true);
+    }
     
     console.log('✅ Mixpanel initialized successfully');
   } catch (error) {
@@ -47,7 +72,7 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   }
 };
 
-// Identify user
+// Identify user - following official documentation
 export const identifyUser = (userId: string, userProperties?: Record<string, any>) => {
   try {
     if (!mixpanel) {
@@ -55,10 +80,12 @@ export const identifyUser = (userId: string, userProperties?: Record<string, any
       return;
     }
 
+    // Call identify to associate future events with this user ID
     mixpanel.identify(userId);
     
+    // Set user profile properties if provided
     if (userProperties) {
-      mixpanel.people.set(userProperties);
+      mixpanel.getPeople().set(userProperties);
     }
     
     console.log(`👤 User identified: ${userId}`, userProperties);
@@ -67,7 +94,7 @@ export const identifyUser = (userId: string, userProperties?: Record<string, any
   }
 };
 
-// Set user properties
+// Set user properties - following official documentation
 export const setUserProperties = (properties: Record<string, any>) => {
   try {
     if (!mixpanel) {
@@ -75,7 +102,8 @@ export const setUserProperties = (properties: Record<string, any>) => {
       return;
     }
 
-    mixpanel.people.set(properties);
+    // Set profile properties using getPeople().set() method
+    mixpanel.getPeople().set(properties);
     console.log('👤 User properties set:', properties);
   } catch (error) {
     console.error('❌ Failed to set user properties:', error);
@@ -109,40 +137,107 @@ export const trackLogout = () => {
   trackEvent('User Logout');
 };
 
-// Chat Events
-export const trackChatInitiated = (characterId: string, characterName: string) => {
+// Reset user data - following official documentation
+export const resetUser = () => {
+  try {
+    if (!mixpanel) {
+      console.warn('⚠️ Mixpanel not initialized. Call initializeMixpanel() first.');
+      return;
+    }
+
+    // Clear local storage and generate new distinct_id
+    mixpanel.reset();
+    console.log('🔄 User data reset successfully');
+  } catch (error) {
+    console.error('❌ Failed to reset user data:', error);
+  }
+};
+
+// Set user properties only if they don't exist - following official documentation
+export const setUserPropertiesOnce = (properties: Record<string, any>) => {
+  try {
+    if (!mixpanel) {
+      console.warn('⚠️ Mixpanel not initialized. Call initializeMixpanel() first.');
+      return;
+    }
+
+    // Set profile properties only if they don't exist yet
+    mixpanel.getPeople().setOnce(properties);
+    console.log('👤 User properties set once:', properties);
+  } catch (error) {
+    console.error('❌ Failed to set user properties once:', error);
+  }
+};
+
+// Opt out of tracking - following official documentation
+export const optOutTracking = () => {
+  try {
+    if (!mixpanel) {
+      console.warn('⚠️ Mixpanel not initialized. Call initializeMixpanel() first.');
+      return;
+    }
+
+    mixpanel.optOutTracking();
+    console.log('🚫 User opted out of tracking');
+  } catch (error) {
+    console.error('❌ Failed to opt out of tracking:', error);
+  }
+};
+
+// Opt in to tracking - following official documentation
+export const optInTracking = () => {
+  try {
+    if (!mixpanel) {
+      console.warn('⚠️ Mixpanel not initialized. Call initializeMixpanel() first.');
+      return;
+    }
+
+    mixpanel.optInTracking();
+    console.log('✅ User opted in to tracking');
+  } catch (error) {
+    console.error('❌ Failed to opt in to tracking:', error);
+  }
+};
+
+// Chat Events - Focus on user behavior
+export const trackChatInitiated = (userId: string, characterId: string, characterName: string) => {
   trackEvent('Chat Initiated', {
+    user_id: userId,
     character_id: characterId,
     character_name: characterName,
   });
 };
 
-export const trackMessageSent = (messageType: 'text' | 'audio' | 'image', characterId: string, messageLength?: number) => {
+export const trackMessageSent = (userId: string, messageType: 'text' | 'audio' | 'image', messageLength?: number, characterId?: string) => {
   trackEvent('Message Sent', {
+    user_id: userId,
     message_type: messageType,
-    character_id: characterId,
     message_length: messageLength,
-  });
-};
-
-export const trackAIResponse = (characterId: string, responseTime?: number) => {
-  trackEvent('AI Response Received', {
     character_id: characterId,
-    response_time_ms: responseTime,
   });
 };
 
-export const trackVoiceRecording = (action: 'start' | 'stop' | 'cancel', characterId: string) => {
+export const trackAIResponse = (userId: string, responseTime?: number, characterId?: string) => {
+  trackEvent('AI Response Received', {
+    user_id: userId,
+    response_time_ms: responseTime,
+    character_id: characterId,
+  });
+};
+
+export const trackVoiceRecording = (userId: string, action: 'start' | 'stop' | 'cancel', characterId?: string) => {
   trackEvent('Voice Recording', {
+    user_id: userId,
     action,
     character_id: characterId,
   });
 };
 
-export const trackImageUpload = (characterId: string, success: boolean) => {
+export const trackImageUpload = (userId: string, success: boolean, characterId?: string) => {
   trackEvent('Image Upload', {
-    character_id: characterId,
+    user_id: userId,
     success,
+    character_id: characterId,
   });
 };
 
@@ -159,6 +254,34 @@ export const trackButtonClick = (buttonName: string, page: string, properties?: 
   trackEvent('Button Click', {
     button_name: buttonName,
     page,
+    ...properties,
+  });
+};
+
+// Convenience functions that automatically include user ID
+export const trackUserEvent = async (eventName: string, properties?: Record<string, any>) => {
+  const userId = await getCurrentUserId();
+  trackEvent(eventName, {
+    user_id: userId,
+    ...properties,
+  });
+};
+
+export const trackUserButtonClick = async (buttonName: string, page: string, properties?: Record<string, any>) => {
+  const userId = await getCurrentUserId();
+  trackEvent('Button Click', {
+    user_id: userId,
+    button_name: buttonName,
+    page,
+    ...properties,
+  });
+};
+
+export const trackUserPageView = async (pageName: string, properties?: Record<string, any>) => {
+  const userId = await getCurrentUserId();
+  trackEvent('Page View', {
+    user_id: userId,
+    page_name: pageName,
     ...properties,
   });
 };
@@ -193,7 +316,12 @@ export default {
   trackEvent,
   identifyUser,
   setUserProperties,
+  setUserPropertiesOnce,
+  resetUser,
+  optOutTracking,
+  optInTracking,
   trackPageView,
+  trackUserPageView,
   trackLogin,
   trackSignup,
   trackLogout,
@@ -204,6 +332,8 @@ export default {
   trackImageUpload,
   trackNavigation,
   trackButtonClick,
+  trackUserButtonClick,
+  trackUserEvent,
   trackFeatureUsage,
   trackError,
   trackPerformance,

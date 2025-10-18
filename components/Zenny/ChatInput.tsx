@@ -9,48 +9,47 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import ImageSelectionModal from './ImageSelectionModal';
 import VoiceRecorder from './VoiceRecorder';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
-  onInputChange: (text: string) => void;
   onImagePreview: (file: ImagePicker.ImagePickerAsset, text?: string) => number;
-  onImageUpload?: (imageUrl: string, messageId: number) => void;
+  onImageUpload?: (imageUrl: string, messageId: number, source?: 'camera' | 'gallery') => void;
   onImageUploadError?: (messageId: number) => void;
   onVoiceRecordingComplete?: (audioUri: string, messageId: number) => void;
   onVoiceRecordingError?: (messageId: number) => void;
-  inputValue: string;
   userId: string;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
-  onInputChange,
   onImagePreview,
   onImageUpload,
   onImageUploadError,
   onVoiceRecordingComplete,
   onVoiceRecordingError,
-  inputValue,
   userId,
 }) => {
+  const [inputValue, setInputValue] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const handleInputChange = useCallback(
     (text: string) => {
-      // OPTIMIZED: Just update the input value, no complex logic
-      onInputChange(text);
+      setInputValue(text);
     },
-    [onInputChange]
+    []
   );
 
   const handleSubmit = useCallback(() => {
+    console.log('🔍 handleSubmit called with inputValue:', inputValue);
     const trimmedValue = inputValue.trim();
     if (!trimmedValue) return;
     
     // CRITICAL: Clear input FIRST for instant feedback
-    onInputChange('');
+    setInputValue('');
     
     // Then send the message (non-blocking)
     onSendMessage(trimmedValue);
@@ -60,12 +59,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
       user_id: userId, 
       message_length: trimmedValue.length 
     });
-  }, [inputValue, onSendMessage, onInputChange, userId]);
+  }, [inputValue, onSendMessage, userId]);
 
   const uploadImageToServer = async (imageUri: string): Promise<string> => {
     const formData = new FormData();
 
-    const imageFile = {
+    const imageFile = { 
       uri: imageUri,
       type: 'image/jpeg',
       name: `image_${Date.now()}.jpg`,
@@ -101,9 +100,64 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const handleImageSelect = useCallback(async () => {
     if (isUploading || isRecording) return;
     
-    trackButtonClick('Image Select', 'Chat Input', { user_id: userId });
+    trackButtonClick('Image Select', 'Chat Input', { user_id: userId, source: 'modal' });
+    setShowImageModal(true);
+  }, [isUploading, isRecording, userId]);
 
+  const handleModalClose = useCallback(() => {
+    setShowImageModal(false);
+  }, []);
+
+  const handleCameraCapture = useCallback(async () => {
     try {
+      // Track camera usage
+      trackButtonClick('Camera Capture', 'Chat Input', { user_id: userId, source: 'camera' });
+      
+      // Request camera permissions
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Alert.alert('Permission Required', 'Camera access is required to take photos!');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageAsset = result.assets[0];
+        const messageId = onImagePreview(imageAsset, inputValue);
+
+        setIsUploading(true);
+
+        try {
+          const imageUrl = await uploadImageToServer(imageAsset.uri);
+          if (onImageUpload) onImageUpload(imageUrl, messageId, 'camera');
+        } catch (uploadError) {
+          if (onImageUploadError) onImageUploadError(messageId);
+          Alert.alert(
+            'Upload Failed',
+            'Failed to upload image. Please check your internet connection and try again.'
+          );
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to capture image');
+      setIsUploading(false);
+    }
+  }, [inputValue, onImagePreview, onImageUpload, onImageUploadError, userId]);
+
+  const handleGallerySelect = useCallback(async () => {
+    try {
+      // Track gallery usage
+      trackButtonClick('Gallery Select', 'Chat Input', { user_id: userId, source: 'gallery' });
+      
+      // Request media library permissions
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert('Permission Required', 'Camera roll access is required!');
@@ -125,7 +179,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
         try {
           const imageUrl = await uploadImageToServer(imageAsset.uri);
-          if (onImageUpload) onImageUpload(imageUrl, messageId);
+          if (onImageUpload) onImageUpload(imageUrl, messageId, 'gallery');
         } catch (uploadError) {
           if (onImageUploadError) onImageUploadError(messageId);
           Alert.alert(
@@ -140,7 +194,23 @@ const ChatInput: React.FC<ChatInputProps> = ({
       Alert.alert('Error', 'Failed to select image');
       setIsUploading(false);
     }
-  }, [isUploading, isRecording, inputValue, onImagePreview, onImageUpload, onImageUploadError, userId]);
+  }, [inputValue, onImagePreview, onImageUpload, onImageUploadError, userId]);
+
+  const handleCameraPress = useCallback(() => {
+    setShowImageModal(false);
+    // Use setTimeout to ensure modal closes before camera opens
+    setTimeout(() => {
+      handleCameraCapture();
+    }, 100);
+  }, [handleCameraCapture]);
+
+  const handleGalleryPress = useCallback(() => {
+    setShowImageModal(false);
+    // Use setTimeout to ensure modal closes before gallery opens
+    setTimeout(() => {
+      handleGallerySelect();
+    }, 100);
+  }, [handleGallerySelect]);
 
   const handleVoiceRecordingComplete = useCallback((audioUri: string) => {
     console.log('🎤 Voice recording completed:', audioUri);
@@ -235,6 +305,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Image Selection Modal */}
+      <ImageSelectionModal
+        visible={showImageModal}
+        onClose={handleModalClose}
+        onCameraPress={handleCameraPress}
+        onGalleryPress={handleGalleryPress}
+      />
     </View>
   );
 };

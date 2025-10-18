@@ -3,6 +3,7 @@ import { splitSentencesToLines } from "@/utils/splitSentence";
 import { MotiView } from "moti";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
+import LinkPreviewComponent from "./LinkPreviewComponent";
 
 interface FadeInTextProps {
   text?: string;
@@ -20,6 +21,10 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lines = useMemo(() => splitSentencesToLines(text ?? ""), [text]);
+  
+  // 🔍 DEBUG: Log when AiLoader starts
+  console.log(`🎬 AiLoader started with text:`, text);
+  console.log(`📝 AiLoader lines:`, lines);
 
   useEffect(() => {
     setVisibleCount(0);
@@ -34,6 +39,7 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
     let index = 0;
 
     const revealNext = () => {
+      console.log(`🎬 Revealing line ${index + 1}/${lines.length}:`, lines[index]);
       setVisibleCount(index + 1);
       setShowLoader(false);
 
@@ -45,9 +51,11 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
 
       if (index < lines.length) {
         setShowLoader(true);
-        const delay = 1000 + index * 250;
+        const delay = 800 + index * 400; // Increased delay for better visibility
+        console.log(`⏰ Next line in ${delay}ms`);
         timeoutRef.current = setTimeout(revealNext, delay);
       } else {
+        console.log(`✅ AiLoader animation complete`);
         onComplete?.();
       }
     };
@@ -67,11 +75,15 @@ const AiReplyAnimation: React.FC<FadeInTextProps> = ({
           from={{ opacity: 0, translateY: 8 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: "timing", duration: 500 }}
-          className="self-start rounded-2xl bg-white/10 border border-white/10 px-3 py-2 mb-1"
+          className="self-start mb-1"
         >
-          <Text className="text-base text-white">
-            {typeof line === 'string' ? line : line.url}
-          </Text>
+          {typeof line === 'string' ? (
+            <View className="rounded-2xl bg-white/10 border border-white/10 px-3 py-2">
+              <Text className="text-base text-white">{line}</Text>
+            </View>
+          ) : (
+            <LinkPreviewComponent url={line.url} />
+          )}
         </MotiView>
       ))}
 

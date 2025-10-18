@@ -67,7 +67,6 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [socket, setSocket] = useState<Socket | null>(null);
-    const [inputValue, setInputValue] = useState('');
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
@@ -80,6 +79,8 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     const deliveryTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(
         new Map(),
     );
+    // Track if we've already fetched chat history for this session
+    const hasFetchedHistoryRef = useRef(false);
 
     // Get userId and track page view on mount
     useEffect(() => {
@@ -116,12 +117,17 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             if (debounceTimer.current) {
                 clearTimeout(debounceTimer.current);
             }
+            // Reset history fetch flag when component unmounts
+            hasFetchedHistoryRef.current = false;
         };
     }, []);
 
     // Setup Socket connection
     useEffect(() => {
         if (!userId) return;
+        
+        // Reset history fetch flag when user or character changes
+        hasFetchedHistoryRef.current = false;
 
         const newSocket = io(SOCKET_SERVER_URL, {
             transports: ['websocket'],
@@ -133,11 +139,20 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
         newSocket.on('connect', () => {
             console.log('✅ Connected to SocketIO');
-            setIsLoadingHistory(true);
-            newSocket.emit('fetch_chat_history', {
-                userId,
-                characterId,
-            });
+            
+            // Only fetch chat history if we haven't already fetched it in this session
+            if (!hasFetchedHistoryRef.current) {
+                console.log('📜 Fetching chat history for the first time');
+                setIsLoadingHistory(true);
+                newSocket.emit('fetch_chat_history', {
+                    userId,
+                    characterId,
+                });
+                hasFetchedHistoryRef.current = true;
+            } else {
+                console.log('📜 Skipping chat history fetch - already fetched in this session');
+                setIsLoadingHistory(false);
+            }
         });
 
         newSocket.on('receive_chat_history', (data) => {
@@ -167,7 +182,27 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         });
 
         newSocket.on('receive_message', (data) => {
+            console.log('📨 Received AI message:', { 
+                type: data.type, 
+                message: data.message?.substring(0, 50) + '...',
+                hasAudio: data.type === 'audio'
+            });
+            
+            // Check if this is a response to a voice message by looking at the last user message
             setMessages((prev) => {
+                const isVoiceResponse = prev.length > 0 && 
+                    prev[prev.length - 1]?.type === 'user' && 
+                    prev[prev.length - 1]?.audio_url;
+                
+                const shouldProcessAsAudio = data.type === 'audio' || isVoiceResponse;
+                
+                console.log('🔍 Voice response check:', { 
+                    isVoiceResponse, 
+                    shouldProcessAsAudio,
+                    lastMessageType: prev[prev.length - 1]?.type,
+                    lastMessageHasAudio: prev[prev.length - 1]?.audio_url
+                });
+
                 const updatedMessages = prev.map((msg) => {
                     if (msg.type === 'user' && !msg.delivered) {
                         const existingTimeout = deliveryTimeoutsRef.current.get(msg.id);
@@ -181,26 +216,34 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     return msg;
                 });
 
-                return [
+                const newMessages = [
                     ...updatedMessages,
                     {
                         id: Date.now() + Math.random(),
-                        type: 'ai',
+                        type: 'ai' as const,
                         content: data.message,
                         isTyping: true,
                         timestamp: data.timestamp,
                         isFromServer: true,
-                        ttsProcessing: data.type === 'audio',
-                        messageType: data.type || 'text',
+                        ttsProcessing: Boolean(shouldProcessAsAudio),
+                        messageType: shouldProcessAsAudio ? 'audio' : (data.type || 'text'),
                     },
                 ];
+
+                // Handle TTS processing after state update
+                setTimeout(() => {
+                    if (shouldProcessAsAudio && data.message) {
+                        console.log('🔊 Triggering TTS for voice response');
+                        generateTTSForMessage(data.message);
+                    } else {
+                        console.log('📝 AI response is text, not audio');
+                    }
+                }, 0);
+
+                return newMessages;
             });
 
             setLoading(false);
-
-            if (data.type === 'audio' && data.message) {
-                generateTTSForMessage(data.message);
-            }
 
             if (userId) {
                 trackAIResponse(userId, undefined, characterId);
@@ -208,6 +251,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         });
 
         newSocket.on('receive_tts', (data) => {
+            console.log('🔊 Received TTS audio:', data);
             setMessages((prev) =>
                 prev.map((msg, index) =>
                     msg.type === 'ai' &&
@@ -228,7 +272,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         return () => {
             newSocket.disconnect();
         };
-    }, [userId, characterId]);
+    }, [userId, characterId, characterName]);
 
     const setDeliveryStatusWithTimeout = useCallback((messageId: number) => {
         const existingTimeout = deliveryTimeoutsRef.current.get(messageId);
@@ -255,7 +299,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             debounceTimer.current = null;
 
             if (socket && userId && (pendingMessagesRef.current.length > 0 || pendingImageRef.current)) {
-                const combinedMessage = pendingMessagesRef.current.join(' ');
+                const combinedMessage = pendingMessagesRef.current.join('\n');
                 const imageUrl = pendingImageRef.current;
 
                 setMessages((prev) =>
@@ -301,7 +345,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                 pendingMessagesRef.current = [];
                 pendingImageRef.current = null;
             }
-        }, 2500);
+        }, 1000); // Reduced debounce time to 1 second for faster response
     }, [socket, userId, characterId, characterName]);
 
     const handleImagePreview = useCallback(
@@ -331,7 +375,7 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
     );
 
     const handleImageUpload = useCallback(
-        (image_url: string, messageId: number) => {
+        (image_url: string, messageId: number, source?: 'camera' | 'gallery') => {
             if (!socket || !userId) return;
 
             let messageContent = '';
@@ -365,10 +409,11 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
             pendingImageRef.current = image_url;
 
             if (userId) {
-                trackImageUpload(userId, true, characterId);
+                trackImageUpload(userId, true, characterId, source);
                 trackMessageSent(userId, 'image', undefined, characterId);
             }
 
+            // Trigger AI response for image uploads
             triggerAiReplyWithDebounce();
         },
         [socket, userId, characterId, characterName, triggerAiReplyWithDebounce],
@@ -441,6 +486,12 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     ),
                 );
 
+                console.log('🎤 Sending voice message to server:', {
+                    type: 'audio',
+                    message: speechResult.DisplayText,
+                    audio_url: speechResult.file_url
+                });
+                
                 socket.emit('send_message', {
                     userId,
                     characterId,
@@ -519,16 +570,6 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
         [socket, userId, characterId, characterName, triggerAiReplyWithDebounce, setDeliveryStatusWithTimeout],
     );
 
-    const handleInputChange = useCallback((text: string) => {
-        setInputValue(text);
-        if (text.trim() && (pendingMessagesRef.current.length > 0 || pendingImageRef.current)) {
-            if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-                debounceTimer.current = null;
-            }
-        }
-    }, []);
-
     const cleanTextForTTS = (text: string): string => {
         return text
             .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
@@ -577,13 +618,21 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
 
                 console.log('✅ TTS generation successful:', { audioUrl: ttsResult.audio_url });
 
-                setMessages((prev) =>
-                    prev.map((msg, index) =>
+                setMessages((prev) => {
+                    const updatedMessages = prev.map((msg, index) =>
                         msg.type === 'ai' && index === prev.length - 1 && msg.ttsProcessing
-                            ? { ...msg, ttsAudioUrl: ttsResult.audio_url, ttsProcessing: false }
+                            ? { ...msg, ttsAudioUrl: ttsResult.audio_url, ttsProcessing: false, isTyping: false }
                             : msg,
-                    ),
-                );
+                    );
+                    
+                    console.log('🔊 Updated message with TTS audio:', {
+                        lastMessage: updatedMessages[updatedMessages.length - 1],
+                        hasTtsAudio: !!updatedMessages[updatedMessages.length - 1]?.ttsAudioUrl,
+                        ttsProcessing: updatedMessages[updatedMessages.length - 1]?.ttsProcessing
+                    });
+                    
+                    return updatedMessages;
+                });
             } catch (error) {
                 console.error('❌ TTS generation failed:', error);
                 setMessages((prev) =>
@@ -667,13 +716,11 @@ const ZennyMainDashboard: React.FC<ZennyMainDashboardProps> = ({
                     />
                     <ChatInput
                         onSendMessage={handleSendMessage}
-                        onInputChange={handleInputChange}
                         onImagePreview={handleImagePreview}
                         onImageUpload={handleImageUpload}
                         onImageUploadError={handleImageUploadError}
                         onVoiceRecordingComplete={handleVoiceRecordingComplete}
                         onVoiceRecordingError={handleVoiceRecordingError}
-                        inputValue={inputValue}
                         userId={userId || ''}
                     />
                 </KeyboardAvoidingView>

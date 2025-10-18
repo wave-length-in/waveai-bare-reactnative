@@ -12,8 +12,14 @@ interface LinkPreview {
 }
 
 const LinkPreviewComponent: React.FC<{ url: string }> = ({ url }) => {
+    // 🔍 DEBUG: Log the URL being processed
+    console.log(`🔗 LinkPreviewComponent received URL:`, url);
+    
     const getPreviewData = (url: string): LinkPreview => {
+        console.log(`🔍 Processing URL for preview:`, url);
+        
         if (url.includes("https://wave-length-assets.s3.ap-south-1.amazonaws.com/IMG")) {
+            console.log(`🖼️ Detected image URL, returning image preview`);
             return { url, image: url };
         } else if (url.includes("spotify.com")) {
             return {
@@ -34,6 +40,7 @@ const LinkPreviewComponent: React.FC<{ url: string }> = ({ url }) => {
                 siteName: "YouTube",
             };
         } else {
+            console.log(`🌐 Detected generic web URL, returning web preview`);
             return {
                 url,
                 title: "Web Page",
@@ -46,6 +53,7 @@ const LinkPreviewComponent: React.FC<{ url: string }> = ({ url }) => {
     };
 
     const preview = getPreviewData(url);
+    console.log(`📋 Generated preview data:`, preview);
 
     return (
         <View className="my-2">

@@ -233,11 +233,12 @@ export const trackVoiceRecording = (userId: string, action: 'start' | 'stop' | '
   });
 };
 
-export const trackImageUpload = (userId: string, success: boolean, characterId?: string) => {
+export const trackImageUpload = (userId: string, success: boolean, characterId?: string, source?: 'camera' | 'gallery') => {
   trackEvent('Image Upload', {
     user_id: userId,
     success,
     character_id: characterId,
+    source,
   });
 };
 

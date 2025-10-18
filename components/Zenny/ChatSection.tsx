@@ -35,6 +35,8 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
   isLoadingHistory = false
 }) => {
 
+  
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -112,7 +114,7 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
         }}
       >
         {/* Privacy Notice - matching Next.js styling */}
-        <View className="mt-20 md:mt-0 mb-3">
+        <View className="mt-4 mb-3">
           <LinearGradient
             colors={['transparent', 'rgba(25,164,234,0.5)']}
             start={{ x: 0, y: 0 }}
@@ -126,6 +128,7 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
         </View>
 
         {messages.map((message, idx) => {
+          
           const dateLabel = message.timestamp ? getDateLabel(message.timestamp, message.isFromServer ?? true) : null;
           const showDateLabel = dateLabel !== lastDateLabel;
           const showTimestamp = shouldShowTimestamp(idx, messages);
@@ -198,6 +201,7 @@ export const ChatSection: React.FC<ChatSectionProps> = ({
                               
                               {/* Text Content - Show for both text and audio flows */}
                               {splitSentencesToLines(message.content || "").map((line, idx) => {
+
                                 // If line is a link object
                                 if (typeof line === "object" && line.type === "link") {
                                   return (

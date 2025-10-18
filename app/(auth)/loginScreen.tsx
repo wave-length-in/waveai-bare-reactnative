@@ -4,20 +4,19 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { identifyUser, trackButtonClick, trackLogin, trackPageView } from "@/services/analytics";
 import { configureGoogleSignIn, loginUser, sendOtp, signInWithGoogle, STORAGE_KEYS, verifyOtp } from "@/services/auth";
-import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetView } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Keyboard, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Keyboard, Text, TextInput, View } from 'react-native';
 
 const LoginScreen: React.FC = () => {
   const router = useRouter();
   const { setUser } = useAuth();
   const { showToast } = useToast();
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const [snapPoints, setSnapPoints] = useState<string[]>(["50%"]);
+  const [snapPoints, setSnapPoints] = useState<string[]>(["40%"]);
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -125,7 +124,7 @@ const LoginScreen: React.FC = () => {
       } else if (error.message.includes("Play services not available")) {
         showToast("error", "Google Play Services Required", "Please install Google Play Services to use Google Sign-In.");
       } else {
-        showToast("error", "Google Sign-In Failed", "Please try mobile number login instead.");
+        showToast("error", "Google Sign-In Failed", "");
       }
     } finally {
       setGoogleLoading(false);
@@ -326,13 +325,12 @@ const LoginScreen: React.FC = () => {
           {!otpSent ? (
             // Show main authentication screen with mobile input
             <View className="w-full">
-              <Text className="text-white text-3xl font-medium mb-8 mt-4 text-left">
+              <Text className="text-white text-center text-3xl font-medium mb-8 mt-4 text-left">
                 Login
               </Text>
               
               {/* Mobile Number Input */}
-              <View className="w-full mb-3">
-                {/* <Text className="text-white text-lg mb-3">Enter your mobile number</Text> */}
+              {/* <View className="w-full mb-3">
                 <View className="flex-row items-center bg-white/10 rounded-full px-4 border border-white/20">
                   <Text className="text-lg text-white mr-2">+91</Text>
                   <TextInput
@@ -347,14 +345,12 @@ const LoginScreen: React.FC = () => {
                   />
                 </View>
                 
-                {/* Bypass Number Indicator */}
                 {mobile === "8739900038" && (
                   <Text className="text-blue-400 text-sm mt-2 text-center">
                     🔓 Development Mode: Direct login enabled
                   </Text>
                 )}
                 
-                {/* Get OTP Button */}
                 <TouchableOpacity
                   onPress={handleGetOtp}
                   disabled={mobile.length !== 10 || loading}
@@ -377,12 +373,11 @@ const LoginScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Divider */}
               <View className="flex-row items-center my-5 w-full">
                 <View className="flex-1 h-px bg-gray-300" />
                 <Text className="mx-4 text-gray-300">OR</Text>
                 <View className="flex-1 h-px bg-gray-300" />
-              </View>
+              </View> */}
 
               {/* Google Option */}
               <GoogleAuthButton
@@ -391,9 +386,9 @@ const LoginScreen: React.FC = () => {
                 disabled={loading}
                 title="Continue with Google"
               />
+
             </View>
           ) : (
-            // OTP Verification Screen
             <OTPVerification
               otp={otp}
               mobile={mobile}

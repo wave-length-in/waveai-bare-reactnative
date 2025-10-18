@@ -7,7 +7,10 @@
     "icon": "./assets/images/app_new_icon.png",
     "scheme": "waveapp",
     "userInterfaceStyle": "automatic",
-    "platforms": ["android", "web"],
+    "platforms": [
+      "android",
+      "web"
+    ],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app_new_icon.png",
@@ -25,7 +28,8 @@
         "xxhdpi": "./assets/images/app_new_icon.png",
         "xxxhdpi": "./assets/images/app_new_icon.png"
       },
-      "package": "com.wave.ai.waveapp"
+      "package": "com.wave.ai.waveapp",
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "bundler": "metro",
@@ -52,7 +56,9 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#000000",
-          "sounds": ["./assets/sound.wav"],
+          "sounds": [
+            "./assets/sound.wav"
+          ],
           "mode": "production"
         }
       ]
@@ -69,6 +75,17 @@
       "router": {},
       "eas": {
         "projectId": "dc97f190-ef09-45c4-9e10-dbb8cb50b01f"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dc97f190-ef09-45c4-9e10-dbb8cb50b01f",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "ios": {
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     }
   }

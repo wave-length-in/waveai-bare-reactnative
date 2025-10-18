@@ -7,7 +7,7 @@ import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function GoogleSignup() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function GoogleSignup() {
   const [gender, setGender] = useState<"Male" | "Female" | null>("Male");
   const [age, setAge] = useState(20);
   const [googleUserData, setGoogleUserData] = useState<any>(null);
+  const [agreeToTerms, setAgreeToTerms] = useState(true);
 
   useEffect(() => {
     const loadGoogleUserData = async () => {
@@ -65,6 +66,11 @@ export default function GoogleSignup() {
 
     if (!googleUserData) {
       showToast("error", "Error", "Google user data not found. Please try again.");
+      return;
+    }
+
+    if (!agreeToTerms) {
+      showToast("error", "Error", "Please agree to the terms and conditions.");
       return;
     }
 
@@ -133,7 +139,7 @@ export default function GoogleSignup() {
       colors={["#000", "#111"]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      className="p-10 h-full rounded-2xl relative"
+      className="flex-1"
     >
       <LinearGradient
         colors={["transparent", "rgba(30, 144, 255, 0.2)", "transparent"]}
@@ -141,9 +147,15 @@ export default function GoogleSignup() {
         end={{ x: 1, y: 0.7 }}
         className="absolute inset-0"
       />
+      <ScrollView 
+        className="flex-1"
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
       {/* Google User Info */}
-      <View className="items-center my-8">
+      <View className="items-center my-4">
         <View className="w-24 h-24 rounded-full overflow-hidden bg-blue-500 border-2 border-white/20 mb-2 items-center justify-center">
           {(() => {
             const avatarUri = googleUserData.picture || googleUserData.photo || googleUserData.user?.photo || null;
@@ -243,12 +255,45 @@ export default function GoogleSignup() {
         disabled={loading}
       />
 
+      {/* Terms and Conditions Checkbox */}
+      <View className="mb-6 mt-4">
+        <TouchableOpacity
+          onPress={() => !loading && setAgreeToTerms(!agreeToTerms)}
+          className="flex-row items-center"
+          disabled={loading}
+        >
+          <View className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${
+            agreeToTerms ? 'bg-[#0096FF] border-[#0096FF]' : 'border-gray-400'
+          }`}>
+            {agreeToTerms && (
+              <Ionicons name="checkmark" size={14} color="#fff" />
+            )}
+          </View>
+          <Text className="text-white text-sm flex-1">
+            I agree to the{' '}
+            <Text 
+              className="text-[#0096FF] underline"
+              onPress={() => Linking.openURL('https://www.wave-length.in/terms-of-use')}
+            >
+              Terms and Conditions
+            </Text>
+            {' '}and{' '}
+            <Text 
+              className="text-[#0096FF] underline"
+              onPress={() => Linking.openURL('https://www.wave-length.in/privacy-policy')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Continue Button */}
       <TouchableOpacity
-        disabled={mobileNumber.length !== 10 || loading}
+        disabled={mobileNumber.length !== 10 || loading || !agreeToTerms}
         onPress={handleContinue}
-        className={`mt-5 absolute w-[80vw] bottom-10 left-[10%] rounded-full overflow-hidden ${
-          (mobileNumber.length !== 10 || loading) ? 'opacity-50' : ''
+        className={`my-3 w-full rounded-full overflow-hidden ${
+          (mobileNumber.length !== 10 || loading || !agreeToTerms) ? 'opacity-50' : ''
         }`}
       >
         <LinearGradient
@@ -267,6 +312,7 @@ export default function GoogleSignup() {
           )}
         </LinearGradient>
       </TouchableOpacity>
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -275,6 +321,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#4f4f4f',
+  },
+  scrollContent: {
+    paddingHorizontal: 40,
+    paddingTop: 40,
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   bubble: {
     backgroundColor: "#0096FF",

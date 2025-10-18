@@ -8,7 +8,7 @@ import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function BasicDetails() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function BasicDetails() {
   const [gender, setGender] = useState<"Male" | "Female" | null>("Male");
   const [age, setAge] = useState(20);
   const [mobileNumber, setMobileNumber] = useState("");
+  const [agreeToTerms, setAgreeToTerms] = useState(true);
 
   useEffect(() => {
     const loadMobileNumber = async () => {
@@ -70,6 +71,11 @@ export default function BasicDetails() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       showToast("error", "Error", "Please enter a valid email address.");
+      return;
+    }
+
+    if (!agreeToTerms) {
+      showToast("error", "Error", "Please agree to the terms and conditions.");
       return;
     }
 
@@ -134,7 +140,7 @@ export default function BasicDetails() {
       colors={["#000", "#111"]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      className="p-10 h-full rounded-2xl relative"
+      className="flex-1"
     >
       <LinearGradient
         colors={["transparent", "rgba(30, 144, 255, 0.2)", "transparent"]}
@@ -142,6 +148,12 @@ export default function BasicDetails() {
         end={{ x: 1, y: 0.7 }}
         className="absolute inset-0"
       />
+      <ScrollView 
+        className="flex-1"
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Enter Your Name */}
       <View className="my-10">
         <Text className="text-3xl text-white font-semibold font-sans my-4">What's your Name?</Text>
@@ -226,29 +238,63 @@ export default function BasicDetails() {
         disabled={loading}
       />
 
-      <TouchableOpacity
-        disabled={userName.trim() === '' || email.trim() === '' || loading || !mobileNumber}
-        onPress={handleContinue}
-        className={`mt-5 absolute w-[80vw] bottom-10 left-[10%] rounded-full overflow-hidden ${
-          (userName.trim() === '' || email.trim() === '' || loading || !mobileNumber) ? 'opacity-50' : ''
-        }`}
-      >
-        <LinearGradient
-          colors={["#19A4EA", "#111"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="flex-row w-full justify-center items-center py-4 px-4 rounded-full"
+      {/* Terms and Conditions Checkbox */}
+      <View className="mb-6 mt-4">
+        <TouchableOpacity
+          onPress={() => !loading && setAgreeToTerms(!agreeToTerms)}
+          className="flex-row items-center"
+          disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator size={25} color="#fff" />
-          ) : (
-            <View className="flex-row items-center">
-              <Text className="text-white font-semibold text-lg mr-2">Create Account</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
-            </View>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
+          <View className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${
+            agreeToTerms ? 'bg-[#0096FF] border-[#0096FF]' : 'border-gray-400'
+          }`}>
+            {agreeToTerms && (
+              <Ionicons name="checkmark" size={14} color="#fff" />
+            )}
+          </View>
+          <Text className="text-white text-sm flex-1">
+            I agree to the{' '}
+            <Text 
+              className="text-[#0096FF] underline"
+              onPress={() => Linking.openURL('https://www.wave-length.in/terms-of-use')}
+            >
+              Terms and Conditions
+            </Text>
+            {' '}and{' '}
+            <Text 
+              className="text-[#0096FF] underline"
+              onPress={() => Linking.openURL('https://www.wave-length.in/privacy-policy')}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+        <TouchableOpacity
+          disabled={userName.trim() === '' || email.trim() === '' || loading || !mobileNumber || !agreeToTerms}
+          onPress={handleContinue}
+          className={`mt-8 mb-10 w-full rounded-full overflow-hidden ${
+            (userName.trim() === '' || email.trim() === '' || loading || !mobileNumber || !agreeToTerms) ? 'opacity-50' : ''
+          }`}
+        >
+          <LinearGradient
+            colors={["#19A4EA", "#111"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="flex-row w-full justify-center items-center py-4 px-4 rounded-full"
+          >
+            {loading ? (
+              <ActivityIndicator size={25} color="#fff" />
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white font-semibold text-lg mr-2">Create Account</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -257,6 +303,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#4f4f4f',
+  },
+  scrollContent: {
+    paddingHorizontal: 40,
+    paddingTop: 40,
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   scrollContainer: {
     height: '60%'

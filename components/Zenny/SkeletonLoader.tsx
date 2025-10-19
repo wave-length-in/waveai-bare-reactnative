@@ -10,7 +10,7 @@ const SkeletonLoader: React.FC = () => {
 
       <View className="py-4">
         {/* Privacy Notice */}
-        <View className="mt-20 md:mt-0 mb-6">
+        <View className="mt-4 md:mt-0 mb-6">
           <LinearGradient
             colors={['transparent', 'rgba(25,164,234,0.5)']}
             start={{ x: 0, y: 0 }}

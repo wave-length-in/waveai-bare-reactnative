@@ -109,7 +109,7 @@ export default function GoogleSignup() {
         await AsyncStorage.removeItem('googleUserData');
 
         showToast("success", "Account Created", "Your profile has been created successfully!");
-        
+
         // Navigate to chat with userId after a delay
         setTimeout(() => {
           setLoading(false);
@@ -147,171 +147,167 @@ export default function GoogleSignup() {
         end={{ x: 1, y: 0.7 }}
         className="absolute inset-0"
       />
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
 
-      {/* Google User Info */}
-      <View className="items-center my-4">
-        <View className="w-24 h-24 rounded-full overflow-hidden bg-blue-500 border-2 border-white/20 mb-2 items-center justify-center">
-          {(() => {
-            const avatarUri = googleUserData.picture || googleUserData.photo || googleUserData.user?.photo || null;
-            if (avatarUri) {
+        {/* Google User Info */}
+        <View className="items-center my-4">
+          <View className="w-24 h-24 rounded-full overflow-hidden bg-blue-500 border-2 border-white/20 mb-2 items-center justify-center">
+            {(() => {
+              const avatarUri = googleUserData.picture || googleUserData.photo || googleUserData.user?.photo || null;
+              if (avatarUri) {
+                return (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                );
+              }
+              const initials = getInitials(googleUserData.name, googleUserData.email);
               return (
-                <Image
-                  source={{ uri: avatarUri }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
+                <Text className="text-white text-3xl font-semibold">
+                  {initials}
+                </Text>
               );
-            }
-            const initials = getInitials(googleUserData.name, googleUserData.email);
-            return (
-              <Text className="text-white text-3xl font-semibold">
-                {initials}
-              </Text>
-            );
-          })()}
+            })()}
+          </View>
+          <Text className="text-white text-2xl font-semibold text-center mb-1">
+            {googleUserData.name}
+          </Text>
+          <Text className="text-gray-400 text-base text-center">
+            {googleUserData.email}
+          </Text>
         </View>
-        <Text className="text-white text-2xl font-semibold text-center mb-1">
-          {googleUserData.name}
-        </Text>
-        <Text className="text-gray-400 text-base text-center">
-          {googleUserData.email}
-        </Text>
-      </View>
 
-      {/* Mobile Number Input */}
-      <View className="my-4">
-        {/* <Text className="text-3xl text-white font-semibold font-sans my-4">
+        {/* Mobile Number Input */}
+        <View className="my-4">
+          {/* <Text className="text-3xl text-white font-semibold font-sans my-4">
           Add your Mobile Number
         </Text> */}
-        <View style={styles.inputContainer} className="flex-row items-center">
-          <Text className="text-lg text-white mr-2">+91</Text>
-          <TextInput
-            placeholder="Enter mobile number"
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            keyboardType="numeric"
-            maxLength={10}
-            value={mobileNumber}
-            onChangeText={setMobileNumber}
-            className="flex-1 text-lg py-3 text-white"
-            editable={!loading}
-          />
-        </View>
-      </View>
-
-      {/* Gender Selection */}
-      <Text className="text-3xl text-white font-sans font-semibold mb-6">
-        Choose your Gender
-      </Text>
-      <View className="flex-row mb-8">
-        {["Male", "Female","Other"].map((g) => {
-          const isSelected = gender === g;
-          return (
-            <TouchableOpacity
-              key={g}
-              onPress={() => !loading && setGender(g as "Male" | "Female")}
-              className={`flex-1 py-3 h-24 my-5 mx-1 rounded-xl flex-col justify-center items-center ${
-                isSelected ? "border-2 border-[#0096FF]" : "border-2 border-blue-100 opacity-40"
-              } ${loading ? 'opacity-50' : ''}`}
-              disabled={loading}
-            >
-              <Text
-                className={`ml-2 text-xl my-2 font-semibold ${
-                  isSelected ? "text-[#0096FF]" : "text-white"
-                }`}
-              >
-                {g}
-              </Text>
-              {isSelected && (
-                <Ionicons name="checkmark-circle" size={20} color="#0096FF" className="ml-1 absolute right-2 top-2" />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Age Selection */}
-      <Text className="text-3xl text-white font-sans font-semibold mb-5">Choose your Age</Text>
-      <View style={{ alignItems: "center", marginBottom: 10 }}>
-        <View style={styles.bubble} className="flex flex-col justify-center items-center">
-          <Text style={styles.bubbleText}>{age === 50 ? "50+" : age}</Text>
-        </View>
-      </View>
-      <Slider
-        style={{ width: "100%", height: 40 }}
-        minimumValue={16}
-        maximumValue={50}
-        step={1}
-        minimumTrackTintColor="#0096FF"
-        maximumTrackTintColor="#d3d3d3"
-        thumbTintColor="#0096FF"
-        value={age}
-        onValueChange={(val) => !loading && setAge(val)}
-        disabled={loading}
-      />
-
-      {/* Terms and Conditions Checkbox */}
-      <View className="mb-6 mt-4">
-        <TouchableOpacity
-          onPress={() => !loading && setAgreeToTerms(!agreeToTerms)}
-          className="flex-row items-center"
-          disabled={loading}
-        >
-          <View className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${
-            agreeToTerms ? 'bg-[#0096FF] border-[#0096FF]' : 'border-gray-400'
-          }`}>
-            {agreeToTerms && (
-              <Ionicons name="checkmark" size={14} color="#fff" />
-            )}
+          <View style={styles.inputContainer} className="flex-row items-center">
+            <Text className="text-lg text-white mr-2">+91</Text>
+            <TextInput
+              placeholder="Enter mobile number"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              keyboardType="numeric"
+              maxLength={10}
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              className="flex-1 text-lg py-3 text-white"
+              editable={!loading}
+            />
           </View>
-          <Text className="text-white text-sm flex-1">
-            I agree to the{' '}
-            <Text 
-              className="text-[#0096FF] underline"
-              onPress={() => Linking.openURL('https://www.wave-length.in/terms-of-use')}
-            >
-              Terms and Conditions
-            </Text>
-            {' '}and{' '}
-            <Text 
-              className="text-[#0096FF] underline"
-              onPress={() => Linking.openURL('https://www.wave-length.in/privacy-policy')}
-            >
-              Privacy Policy
-            </Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* Continue Button */}
-      <TouchableOpacity
-        disabled={mobileNumber.length !== 10 || loading || !agreeToTerms}
-        onPress={handleContinue}
-        className={`my-3 w-full rounded-full overflow-hidden ${
-          (mobileNumber.length !== 10 || loading || !agreeToTerms) ? 'opacity-50' : ''
-        }`}
-      >
-        <LinearGradient
-          colors={["#19A4EA", "#111"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="flex-row w-full justify-center items-center py-4 px-4 rounded-full"
-        >
-          {loading ? (
-            <ActivityIndicator size={25} color="#fff" />
-          ) : (
-            <View className="flex-row items-center">
-              <Text className="text-white font-semibold text-lg mr-2">Complete Setup</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+        {/* Gender Selection */}
+        <Text className="text-[1.5rem] text-white font-sans font-semibold mb-6">
+          Choose your Gender
+        </Text>
+        <View className="flex-row mb-8">
+          {["Male", "Female", "Other"].map((g) => {
+            const isSelected = gender === g;
+            return (
+              <TouchableOpacity
+                key={g}
+                onPress={() => !loading && setGender(g as "Male" | "Female")}
+                className={`flex-1 py-3 h-24 my-5 mx-1 rounded-xl flex-col justify-center items-center ${isSelected ? "border-2 border-[#0096FF]" : "border-2 border-blue-100 opacity-40"
+                  } ${loading ? 'opacity-50' : ''}`}
+                disabled={loading}
+              >
+                <Text
+                  className={`ml-2 text-xl my-2 font-semibold ${isSelected ? "text-[#0096FF]" : "text-white"
+                    }`}
+                >
+                  {g}
+                </Text>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={20} color="#0096FF" className="ml-1 absolute right-2 top-2" />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Age Selection */}
+        <Text className="text-[1.5rem] text-white font-sans font-semibold mb-5">Choose your Age</Text>
+        <View style={{ alignItems: "center", marginBottom: 10 }}>
+          <View style={styles.bubble} className="flex flex-col justify-center items-center">
+            <Text style={styles.bubbleText}>{age === 50 ? "50+" : age}</Text>
+          </View>
+        </View>
+        <Slider
+          style={{ width: "100%", height: 40 }}
+          minimumValue={16}
+          maximumValue={50}
+          step={1}
+          minimumTrackTintColor="#0096FF"
+          maximumTrackTintColor="#d3d3d3"
+          thumbTintColor="#0096FF"
+          value={age}
+          onValueChange={(val) => !loading && setAge(val)}
+          disabled={loading}
+        />
+
+        {/* Terms and Conditions Checkbox */}
+        <View className="mb-6 mt-4">
+          <TouchableOpacity
+            onPress={() => !loading && setAgreeToTerms(!agreeToTerms)}
+            className="flex-row items-center"
+            disabled={loading}
+          >
+            <View className={`w-5 h-5 rounded border-2 mr-3 items-center justify-center ${agreeToTerms ? 'bg-[#0096FF] border-[#0096FF]' : 'border-gray-400'
+              }`}>
+              {agreeToTerms && (
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              )}
             </View>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
+            <Text className="text-white text-sm flex-1">
+              I agree to the{' '}
+              <Text
+                className="text-[#0096FF] underline"
+                onPress={() => Linking.openURL('https://www.wave-length.in/terms-of-use')}
+              >
+                Terms and Conditions
+              </Text>
+              {' '}and{' '}
+              <Text
+                className="text-[#0096FF] underline"
+                onPress={() => Linking.openURL('https://www.wave-length.in/privacy-policy')}
+              >
+                Privacy Policy
+              </Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Continue Button */}
+        <TouchableOpacity
+          disabled={mobileNumber.length !== 10 || loading || !agreeToTerms}
+          onPress={handleContinue}
+          className={`my-3 w-full rounded-full overflow-hidden ${(mobileNumber.length !== 10 || loading || !agreeToTerms) ? 'opacity-50' : ''
+            }`}
+        >
+          <LinearGradient
+            colors={["#19A4EA", "#111"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="flex-row w-full justify-center items-center py-4 px-4 rounded-full"
+          >
+            {loading ? (
+              <ActivityIndicator size={25} color="#fff" />
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-white font-semibold text-lg mr-2">Complete Setup</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );

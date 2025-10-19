@@ -1,15 +1,15 @@
 import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
-import OTPVerification from "@/components/auth/OtpVerification";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { identifyUser, trackButtonClick, trackLogin, trackPageView } from "@/services/analytics";
 import { configureGoogleSignIn, loginUser, sendOtp, signInWithGoogle, STORAGE_KEYS, verifyOtp } from "@/services/auth";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Keyboard, Text, TextInput, View } from 'react-native';
+import { Image, Keyboard, TextInput, View } from 'react-native';
+
 
 const LoginScreen: React.FC = () => {
   const router = useRouter();
@@ -43,7 +43,7 @@ const LoginScreen: React.FC = () => {
   useEffect(() => {
     // Configure Google Sign-In
     configureGoogleSignIn();
-    
+
     const showSubscription = Keyboard.addListener("keyboardDidShow", handleKeyboardShow);
     const hideSubscription = Keyboard.addListener("keyboardDidHide", handleKeyboardHide);
     return () => {
@@ -67,22 +67,22 @@ const LoginScreen: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     trackButtonClick('Google Sign In', 'Login Screen', { auth_method: 'google' });
-    
+
     try {
       console.log('🔍 User initiated Google Sign-In...');
       const googleUser = await signInWithGoogle();
-      
+
       // Check if user exists with this email
       try {
         const loginResponse = await loginUser(undefined, googleUser.email);
-        
+
         if (loginResponse.success) {
           // User exists, login successful
           showToast("success", "Login Successful", "Welcome back!");
-          
+
           // Track successful login following official documentation
           trackLogin('google', loginResponse.data.userId);
-          
+
           // Identify user and set profile properties
           identifyUser(loginResponse.data.userId, {
             email: googleUser.email,
@@ -90,7 +90,7 @@ const LoginScreen: React.FC = () => {
             auth_method: 'google',
             login_date: new Date().toISOString()
           });
-          
+
           // Navigate to chat with userId
           setTimeout(() => {
             router.push(`/chat/${loginResponse.data.userId}`);
@@ -104,7 +104,7 @@ const LoginScreen: React.FC = () => {
             ...googleUser,
             authMethod: 'google'
           }));
-          
+
           showToast("info", "New User", "Let's complete your profile!");
           setTimeout(() => {
             router.push("/(auth)/googleSignup");
@@ -115,7 +115,7 @@ const LoginScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      
+
       // Handle specific Google Sign-In errors gracefully
       if (error.message.includes("DEVELOPER_ERROR")) {
         showToast("error", "Google Sign-In Not Available", "Google Sign-In is not configured yet. Please use mobile number login.");
@@ -133,7 +133,7 @@ const LoginScreen: React.FC = () => {
 
   const handleGetOtp = async () => {
     trackButtonClick('Get OTP', 'Login Screen', { auth_method: 'otp', mobile_length: mobile.length });
-    
+
     if (mobile.trim().length !== 10) {
       showToast("error", "Invalid Mobile Number", "Please enter a valid 10-digit mobile number.");
       return;
@@ -147,15 +147,15 @@ const LoginScreen: React.FC = () => {
       // Check if this is the bypass number - direct login without OTP
       if (mobile === "8739900038") {
         console.log("🔓 Bypass number detected - proceeding with direct login");
-        
+
         // Try to login directly
         try {
           const loginResponse = await loginUser(`+91${mobile}`);
-          
+
           if (loginResponse.success) {
             // User exists, login successful
             showToast("success", "Login Successful", "Welcome back!");
-            
+
             // Navigate to chat with userId
             setTimeout(() => {
               router.push(`/chat/${loginResponse.data.userId}`);
@@ -193,7 +193,7 @@ const LoginScreen: React.FC = () => {
   const handleVerifyOtp = async () => {
     const otpCode = otp.join('');
     trackButtonClick('Verify OTP', 'Login Screen', { auth_method: 'otp', otp_length: otpCode.length });
-    
+
     if (otpCode.length !== 6) {
       showToast("error", "Invalid OTP", "Please enter a valid 4-digit OTP.");
       return;
@@ -215,7 +215,7 @@ const LoginScreen: React.FC = () => {
 
             // Track successful login following official documentation
             trackLogin('otp', loginResponse.data.userId);
-            
+
             // Identify user and set profile properties
             identifyUser(loginResponse.data.userId, {
               mobile: `+91${mobile}`,
@@ -277,16 +277,43 @@ const LoginScreen: React.FC = () => {
   );
 
   return (
-    <View className="flex-1">
+    <View className="relative flex-1 bg-black">
       <LinearGradient
         colors={["#000", "#111"]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        className="flex-1 items-center justify-center relative"
+        className="items-center bg-black/40 justify-center relative"
       />
 
+      {/* Background Image */}
+      <Image
+        source={require("../../assets/images/zenny_chat.jpg")}
+        className="absolute inset-0 h-full w-[100%]"
+        resizeMode="contain"
+        blurRadius={2}
+      />
+
+      {/* Gradient Overlay for better button visibility */}
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.9)"]}
+        className="absolute inset-0"
+      />
+
+      {/* Google Auth Button Container */}
+      <View className="absolute bottom-16 left-0 right-0 items-center px-5" style={{ bottom: '15%' }}>
+        <View className="w-[90%]">
+          <GoogleAuthButton
+            onPress={handleGoogleSignIn}
+            loading={googleLoading}
+            disabled={loading}
+            title="Continue with Google"
+          />
+        </View>
+      </View>
+
+
       {/* Cosmic Background Overlay */}
-      <View className="absolute inset-0">
+      {/* <View className="absolute inset-0">
         <LinearGradient
           colors={["transparent", "rgba(30, 144, 255, 0.2)", "transparent"]}
           start={{ x: 0, y: 0.3 }}
@@ -305,9 +332,9 @@ const LoginScreen: React.FC = () => {
             Hii, I'm Zenny!
           </Text>
         </View>
-      </View>
+      </View> */}
 
-      <BottomSheet
+      {/* <BottomSheet
         ref={bottomSheetRef}
         index={0}
         snapPoints={snapPoints}
@@ -329,8 +356,7 @@ const LoginScreen: React.FC = () => {
                 Login
               </Text>
               
-              {/* Mobile Number Input */}
-              {/* <View className="w-full mb-3">
+              <View className="w-full mb-3">
                 <View className="flex-row items-center bg-white/10 rounded-full px-4 border border-white/20">
                   <Text className="text-lg text-white mr-2">+91</Text>
                   <TextInput
@@ -377,16 +403,9 @@ const LoginScreen: React.FC = () => {
                 <View className="flex-1 h-px bg-gray-300" />
                 <Text className="mx-4 text-gray-300">OR</Text>
                 <View className="flex-1 h-px bg-gray-300" />
-              </View> */}
+              </View>
 
-              {/* Google Option */}
-              <GoogleAuthButton
-                onPress={handleGoogleSignIn}
-                loading={googleLoading}
-                disabled={loading}
-                title="Continue with Google"
-              />
-
+             
             </View>
           ) : (
             <OTPVerification
@@ -405,7 +424,7 @@ const LoginScreen: React.FC = () => {
             />
           )}
         </BottomSheetView>
-      </BottomSheet>
+      </BottomSheet> */}
     </View>
   );
 };

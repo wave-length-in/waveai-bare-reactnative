@@ -1,5 +1,5 @@
 // _layout.tsx
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { initializeMixpanel, trackNavigation } from '@/services/analytics';
@@ -10,6 +10,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Updates from 'expo-updates';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,8 +23,41 @@ function InitialAuthCheck({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
+  const { showToast } = useToast();
 
   useEffect(() => {
+    // Check for updates on app start
+    const checkForUpdates = async () => {
+      try {
+        if (!__DEV__ && Updates.isEnabled) {
+          console.log('🔄 Checking for updates...');
+          // showToast('info', 'Checking for updates...', 'Looking for new updates...');
+          
+          const update = await Updates.checkForUpdateAsync();
+          if (update.isAvailable) {
+            console.log('📱 Update available, downloading...');
+            // showToast('info', 'Update Available', 'Downloading update...');
+            
+            await Updates.fetchUpdateAsync();
+            console.log('✅ Update downloaded, restarting app...');
+            // showToast('success', 'Update Downloaded', 'Restarting app with new version...');
+            
+            await Updates.reloadAsync();
+          } else {
+            console.log('✅ App is up to date');
+            // showToast('success', 'App Updated', 'You have the latest version!');
+          }
+        } else {
+          showToast('info', 'Update Check', 'Updates disabled in development mode');
+        }
+      } catch (error) {
+        console.log('❌ Error checking for updates:', error);
+        // showToast('error', 'Update Error', 'Failed to check for updates');
+      }
+    };
+
+    checkForUpdates();
+
     // Notifications setup once on app start
     setForegroundNotificationHandler();
     const unsubscribe = addNotificationListeners(

@@ -273,15 +273,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image, onClearChatSuccess
         animationType="fade"
         onRequestClose={closeProfileModal}
       >
-        <Pressable
-          className="flex-1 bg-black/80"
-          onPress={closeProfileModal}
-        >
+        <View className="flex-1 bg-black/80">
           <ScrollView
             showsVerticalScrollIndicator={false}
-            className="px-6 pb-6"
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 24 }}
           >
-            <View className="flex-1 justify-center items-center p-4">
+            <View className="flex-1 justify-center items-center">
               <MotiView
                 from={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -289,7 +287,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image, onClearChatSuccess
                   type: 'timing',
                   duration: 400,
                 }}
-                className="w-full h-[40vh] max-w-sm"
+                className="w-full max-w-sm"
               >
                 <LinearGradient
                   colors={['#000', '#111']}
@@ -487,7 +485,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ name, image, onClearChatSuccess
               </MotiView>
             </View>
           </ScrollView>
-        </Pressable>
+        </View>
       </Modal>
     </View>
   );

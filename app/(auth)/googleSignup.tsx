@@ -306,7 +306,7 @@ export default function GoogleSignup() {
             <ActivityIndicator size={25} color="#fff" />
           ) : (
             <View className="flex-row items-center">
-              <Text className="text-white font-semibold text-lg mr-2">Complete Registration</Text>
+              <Text className="text-white font-semibold text-lg mr-2">Complete Setup</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </View>
           )}

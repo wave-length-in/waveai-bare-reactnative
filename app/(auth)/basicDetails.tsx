@@ -156,7 +156,7 @@ export default function BasicDetails() {
       >
       {/* Enter Your Name */}
       <View className="my-10">
-        <Text className="text-3xl text-white font-semibold font-sans my-4">What's your Name?</Text>
+        <Text className="text-[1.5rem] text-white font-semibold font-sans my-4">What's your Name?</Text>
         <View style={styles.inputContainer} className="flex-row items-center">
           <TextInput
             placeholder="Enter your name"
@@ -173,7 +173,7 @@ export default function BasicDetails() {
 
       {/* Enter Your Email */}
       <View className="my-10">
-        <Text className="text-3xl text-white font-semibold font-sans my-4">What's your Email?</Text>
+        <Text className="text-[1.5rem] text-white font-semibold font-sans my-4">What's your Email?</Text>
         <View style={styles.inputContainer} className="flex-row items-center">
           <TextInput
             placeholder="Enter your email"
@@ -189,7 +189,7 @@ export default function BasicDetails() {
         </View>
       </View>
 
-      <Text className="text-3xl text-white font-sans font-semibold mb-10">
+      <Text className="text-[1.5rem] text-white font-sans font-semibold mb-10">
         Choose your Gender
       </Text>
       <View className="flex-row mb-8">
@@ -219,7 +219,7 @@ export default function BasicDetails() {
         })}
       </View>
 
-      <Text className="text-3xl text-white font-sans font-semibold mb-5">Choose your Age</Text>
+      <Text className="text-[1.25rem] text-white font-sans font-semibold mb-5">Choose your Age</Text>
       <View style={{ alignItems: "center", marginBottom: 10 }}>
         <View style={styles.bubble} className="flex flex-col justify-center items-center">
           <Text style={styles.bubbleText}>{age === 50 ? "50+" : age}</Text>

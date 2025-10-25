@@ -3,19 +3,18 @@ import { trackButtonClick, trackVoiceRecording } from '@/services/analytics';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useState } from 'react';
-import {
-  Alert,
-  TextInput,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { Alert, TextInput, TouchableOpacity, View } from 'react-native';
 import ImageSelectionModal from './ImageSelectionModal';
 import VoiceRecorder from './VoiceRecorder';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
   onImagePreview: (file: ImagePicker.ImagePickerAsset, text?: string) => number;
-  onImageUpload?: (imageUrl: string, messageId: number, source?: 'camera' | 'gallery') => void;
+  onImageUpload?: (
+    imageUrl: string,
+    messageId: number,
+    source?: 'camera' | 'gallery'
+  ) => void;
   onImageUploadError?: (messageId: number) => void;
   onVoiceRecordingComplete?: (audioUri: string, messageId: number) => void;
   onVoiceRecordingError?: (messageId: number) => void;
@@ -36,35 +35,34 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
 
-  const handleInputChange = useCallback(
-    (text: string) => {
-      setInputValue(text);
-    },
-    []
-  );
+  const handleInputChange = useCallback((text: string) => {
+    setInputValue(text);
+  }, []);
 
   const handleSubmit = useCallback(() => {
     console.log('🔍 handleSubmit called with inputValue:', inputValue);
     const trimmedValue = inputValue.trim();
     if (!trimmedValue) return;
-    
+
     // CRITICAL: Clear input FIRST for instant feedback
     setInputValue('');
-    
-    // Then send the message (non-blocking)
+
+    // Send the message immediately (highest priority)
     onSendMessage(trimmedValue);
-    
-    // Track analytics (async, non-blocking)
-    trackButtonClick('Send Message', 'Chat Input', { 
-      user_id: userId, 
-      message_length: trimmedValue.length 
-    });
+
+    // Track analytics asynchronously to avoid blocking UI
+    setTimeout(() => {
+      trackButtonClick('Send Message', 'Chat Input', {
+        user_id: userId,
+        message_length: trimmedValue.length,
+      });
+    }, 0);
   }, [inputValue, onSendMessage, userId]);
 
   const uploadImageToServer = async (imageUri: string): Promise<string> => {
     const formData = new FormData();
 
-    const imageFile = { 
+    const imageFile = {
       uri: imageUri,
       type: 'image/jpeg',
       name: `image_${Date.now()}.jpg`,
@@ -83,7 +81,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
@@ -99,8 +99,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleImageSelect = useCallback(async () => {
     if (isUploading || isRecording) return;
-    
-    trackButtonClick('Image Select', 'Chat Input', { user_id: userId, source: 'modal' });
+
+    trackButtonClick('Image Select', 'Chat Input', {
+      user_id: userId,
+      source: 'modal',
+    });
     setShowImageModal(true);
   }, [isUploading, isRecording, userId]);
 
@@ -111,12 +114,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const handleCameraCapture = useCallback(async () => {
     try {
       // Track camera usage
-      trackButtonClick('Camera Capture', 'Chat Input', { user_id: userId, source: 'camera' });
-      
+      trackButtonClick('Camera Capture', 'Chat Input', {
+        user_id: userId,
+        source: 'camera',
+      });
+
       // Request camera permissions
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      const cameraPermission =
+        await ImagePicker.requestCameraPermissionsAsync();
       if (!cameraPermission.granted) {
-        Alert.alert('Permission Required', 'Camera access is required to take photos!');
+        Alert.alert(
+          'Permission Required',
+          'Camera access is required to take photos!'
+        );
         return;
       }
 
@@ -155,10 +165,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const handleGallerySelect = useCallback(async () => {
     try {
       // Track gallery usage
-      trackButtonClick('Gallery Select', 'Chat Input', { user_id: userId, source: 'gallery' });
-      
+      trackButtonClick('Gallery Select', 'Chat Input', {
+        user_id: userId,
+        source: 'gallery',
+      });
+
       // Request media library permissions
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert('Permission Required', 'Camera roll access is required!');
         return;
@@ -212,83 +226,90 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }, 100);
   }, [handleGallerySelect]);
 
-  const handleVoiceRecordingComplete = useCallback((audioUri: string) => {
-    console.log('🎤 Voice recording completed:', audioUri);
-    
-    const messageId = Date.now();
-    
-    if (onVoiceRecordingComplete) {
-      onVoiceRecordingComplete(audioUri, messageId);
-    }
-    
-    setIsRecording(false);
-  }, [onVoiceRecordingComplete]);
+  const handleVoiceRecordingComplete = useCallback(
+    (audioUri: string) => {
+      console.log('🎤 Voice recording completed:', audioUri);
+
+      const messageId = Date.now();
+
+      if (onVoiceRecordingComplete) {
+        onVoiceRecordingComplete(audioUri, messageId);
+      }
+
+      setIsRecording(false);
+    },
+    [onVoiceRecordingComplete]
+  );
 
   const handleVoiceRecordingCancel = useCallback(() => {
     setIsRecording(false);
     trackVoiceRecording(userId, 'cancel');
-    trackButtonClick('Voice Recording Cancel', 'Chat Input', { user_id: userId });
+    trackButtonClick('Voice Recording Cancel', 'Chat Input', {
+      user_id: userId,
+    });
   }, [userId]);
 
   const startVoiceRecording = useCallback(() => {
     setIsRecording(true);
     trackVoiceRecording(userId, 'start');
-    trackButtonClick('Voice Recording Start', 'Chat Input', { user_id: userId });
+    trackButtonClick('Voice Recording Start', 'Chat Input', {
+      user_id: userId,
+    });
   }, [userId]);
 
   // OPTIMIZED: Simplified send button state
   const canSend = inputValue.trim().length > 0 && !isUploading && !isRecording;
 
   return (
-    <View className="px-4 pb-4 pt-2">
+    <View className='px-4 pb-4 pt-2'>
       {isRecording ? (
         <VoiceRecorder
           onRecordingComplete={handleVoiceRecordingComplete}
           onCancel={handleVoiceRecordingCancel}
         />
       ) : (
-        <View className="relative flex-row items-end rounded-2xl border border-white/20 bg-white/5 p-2">
+        <View className='relative flex-row items-end rounded-2xl border border-white/20 bg-white/5 p-2'>
           <TextInput
-            className="flex-1 text-white text-base px-2"
+            className='flex-1 text-white text-base px-2'
             value={inputValue}
             onChangeText={handleInputChange}
-            placeholder="Type a message..."
-            placeholderTextColor="rgba(255,255,255,0.5)"
+            placeholder='Type a message...'
+            placeholderTextColor='rgba(255,255,255,0.5)'
             multiline
-            textAlignVertical="center"
+            textAlignVertical='center'
             autoCorrect={false}
-            autoCapitalize="sentences"
-            returnKeyType="default"
+            autoCapitalize='sentences'
+            returnKeyType='default'
             blurOnSubmit={false}
             maxLength={1000}
-            keyboardType="default"
-            textContentType="none"
-            autoComplete="off"
+            keyboardType='default'
+            textContentType='none'
+            autoComplete='off'
           />
 
           {/* Microphone Button */}
-          <TouchableOpacity 
-            className="p-2" 
-            onPress={startVoiceRecording} 
+          <TouchableOpacity
+            className='p-2'
+            onPress={startVoiceRecording}
             disabled={isUploading}
             activeOpacity={0.7}
           >
             <Ionicons
-              name="mic"
+              name='mic'
               size={22}
               color={isUploading ? '#999' : '#fff'}
             />
           </TouchableOpacity>
 
           {/* Image Button */}
-          <TouchableOpacity 
-            className="p-2" 
-            onPress={handleImageSelect} 
+          <TouchableOpacity
+            className='p-2'
+            onPress={handleImageSelect}
             disabled={isUploading}
             activeOpacity={0.7}
           >
             <Ionicons
-              name="image-outline"
+              name='image-outline'
               size={22}
               color={isUploading ? '#999' : '#fff'}
             />
@@ -301,7 +322,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             disabled={!canSend}
             activeOpacity={0.7}
           >
-            <Ionicons name="send" size={22} color={canSend ? '#fff' : '#999'} />
+            <Ionicons name='send' size={22} color={canSend ? '#fff' : '#999'} />
           </TouchableOpacity>
         </View>
       )}

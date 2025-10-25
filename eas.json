@@ -21,8 +21,14 @@
       }
     },
     "production": {
+      "node": "22.19.0",
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env":{
+        "NPM_CONFIG_PRODUCTION": "false",
+        "npm_config_production": "false"
+      },
+      "cache": { "disabled": true }
     }
   },
   "submit": {

@@ -224,6 +224,8 @@ export const verifyOtp = async (otp: string): Promise<VerifyOtpResponse> => {
       };
     }
 
+    console.log("API URL", `${API_URL}/verify-otp/`)
+
     const res = await fetch(`${API_URL}/verify-otp/`, {
       method: "POST",
       headers: {
@@ -251,6 +253,7 @@ export const loginUser = async (mobileNumber?: string, email?: string): Promise<
       payload.email = email;
     }
 
+    console.log("API URL", `${API_URL}/user/login`);
     const response = await fetch(`${API_URL}/user/login`, {
       method: "POST",
       headers: {
@@ -265,6 +268,7 @@ export const loginUser = async (mobileNumber?: string, email?: string): Promise<
     }
 
     const data: LoginResponse = await response.json();
+    console.log("Login Response", data);
     
     // Store auth data if login successful
     if (data.success) {

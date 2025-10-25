@@ -71,10 +71,12 @@ const LoginScreen: React.FC = () => {
     try {
       console.log('🔍 User initiated Google Sign-In...');
       const googleUser = await signInWithGoogle();
+      console.log("Google User Log Data", googleUser);
 
       // Check if user exists with this email
       try {
         const loginResponse = await loginUser(undefined, googleUser.email);
+        console.log("Login Response", loginResponse);
 
         if (loginResponse.success) {
           // User exists, login successful
